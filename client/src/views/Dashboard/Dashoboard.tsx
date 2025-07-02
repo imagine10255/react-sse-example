@@ -6,6 +6,9 @@ import React, {useEffect, useState} from 'react';
 import {useNavigate} from 'react-router';
 
 
+
+const baseApiUrl = 'http://localhost:3333';
+
 const Dashboard = () => {
     const [sseSource, setSSESource] = useState<EventSource|null>(null)
     const [pingList, setPingList] = useState<string[]>([])
@@ -23,21 +26,28 @@ const Dashboard = () => {
         }
     }, [])
 
+
+    /**
+     * 關閉連線
+     */
     const closeConnection = () => {
         if (sseSource) {
             sseSource.close()
             setSSESource(null)
             setPingList(['已断开连接，等待重新连接...'])
         } else {
-            alert('当前无连接')
-            return
+            toast.error('當前無連接');
+            return;
         }
     }
 
 
+    /**
+     * 取得連線數
+     */
     const getConnectedUsers = async () => {
         try {
-            const response = await fetch('http://localhost:3333/users')
+            const response = await fetch(`${baseApiUrl}/users`)
             const result = await response.json()
             console.log('連接用戶列表:', result)
             if (result.success) {
@@ -48,18 +58,21 @@ const Dashboard = () => {
         }
     }
 
+    /**
+     * 建立連線
+     */
     const createConnection = () => {
         if (!userId) {
-            alert('請先輸入用戶 ID')
+            toast.error('請先輸入UserId');
             return
         }
 
         if (!sseSource) {
-            const source = new EventSource(`http://localhost:3333/sse?userId=${userId}`)
+            const source = new EventSource(`${baseApiUrl}/sse?userId=${userId}`)
             setSSESource(source)
             source.addEventListener('open', () => {
                 console.log('Connection Opened')
-                setPingList(['已建立连接，准备传输数据...'])
+                setPingList(['已建立連線，準備傳輸數據...'])
             })
             source.addEventListener('error', (e) => {
                 console.log('Connection Error', e)
@@ -67,7 +80,7 @@ const Dashboard = () => {
             source.addEventListener('connected', (e) => {
                 console.log('SSE 連接已建立', e)
                 const data = JSON.parse(e.data)
-                setPingList((prev) => [...prev, `連接確認: ${data.message}`])
+                setPingList((prev) => [...prev, `連線確認: ${data.message}`])
             })
             source.addEventListener('ping', (e) => {
                 console.log(e)
@@ -82,13 +95,16 @@ const Dashboard = () => {
                 setNotifications((prev) => [...prev, `${data.message} (${data.timestamp})`])
             })
         } else {
-            alert('建立新连接前请断开当前连接')
+            toast.warning('建立新連線前，請先斷開連線');
         }
     }
 
+    /**
+     * 廣播全體使用者訊息
+     */
     const triggerNotification = async () => {
         try {
-            const response = await fetch('http://localhost:3333/trigger', {
+            const response = await fetch(`${baseApiUrl}/trigger`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -99,17 +115,19 @@ const Dashboard = () => {
                 })
             })
             const result = await response.json()
-            console.log('觸發結果:', result)
-            alert(`觸發成功: ${result.message}`)
+            toast.warning(`發送成功: ${result.message}`);
         } catch (error) {
-            console.error('觸發失敗:', error)
-            alert('觸發失敗，請檢查伺服器狀態')
+            toast.error(`發送失敗，請檢查伺服器狀態`);
         }
     }
 
+
+    /**
+     * 通知特定使用者訊息
+     */
     const notifySpecificUser = async () => {
         if (!targetUserId || !notificationMessage) {
-            alert('請輸入目標用戶 ID 和通知訊息')
+            toast.warning(`請輸入目標用戶 ID 和通知訊息`);
             return
         }
 
@@ -126,26 +144,25 @@ const Dashboard = () => {
                 })
             })
             const result = await response.json()
-            console.log('個別通知結果:', result)
-            alert(`${result.success ? '成功' : '失敗'}: ${result.message}`)
+            toast.warning(`個別通知結果 ${result.success ? '成功' : '失敗'}: ${result.message}`);
 
             if (result.success) {
                 setNotificationMessage('')
             }
         } catch (error) {
             console.error('個別通知失敗:', error)
-            alert('個別通知失敗，請檢查伺服器狀態')
+            toast.error('個別通知失敗，請檢查伺服器狀態');
         }
     }
 
     return (
         <div>
             <div style={{ marginBottom: '20px', padding: '10px', border: '1px solid #ccc' }}>
-                <h3>用戶註冊</h3>
+                <h3>Login</h3>
                 <div>
                     <input
                         type="text"
-                        placeholder="用戶 ID"
+                        placeholder="UserId"
                         value={userId}
                         onChange={(e) => setUserId(e.target.value)}
                         style={{ marginRight: '10px' }}
@@ -155,16 +172,16 @@ const Dashboard = () => {
 
             <div style={{ marginBottom: '20px' }}>
                 <button onClick={createConnection} disabled={!userId}>
-                    建立连接
+                    建立連線
                 </button>
                 <button onClick={closeConnection}>
-                    断开连接
+                    斷開連線
                 </button>
                 <button onClick={triggerNotification}>
                     觸發全體通知
                 </button>
                 <button onClick={getConnectedUsers}>
-                    獲取連接用戶列表
+                    取得所有已連接用戶
                 </button>
             </div>
 
