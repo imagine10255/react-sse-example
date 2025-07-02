@@ -3,9 +3,10 @@ import {Col, Container, Flex, Row} from '@acrool/react-grid';
 import {useLocale} from '@acrool/react-locale';
 import {toast} from '@acrool/react-toaster';
 import React, {useCallback, useEffect, useState} from 'react';
-import {useNavigate} from 'react-router';
+import {useLocation, useNavigate, useParams} from 'react-router';
 import {Controller, SubmitHandler, useForm} from "react-hook-form";
 import clsx from 'clsx';
+import {isEmpty} from "@acrool/js-utils/equal";
 
 
 
@@ -23,24 +24,34 @@ interface IMessageForm {
     message: string
 }
 
-const baseApiUrl = 'http://localhost:3333';
+const baseApiUrl = 'http://localhost:8081';
 
 const Dashboard = () => {
+    const {userId} = useParams<{userId: string}>();
     const [sseSource, setSSESource] = useState<EventSource|null>(null)
+
     const [pingList, setPingList] = useState<string[]>([])
     const [notifications, setNotifications] = useState<string[]>([])
     const [connectedUsers, setConnectedUsers] = useState<string[]>([])
+
     const [activeUserId, setActiveUserId] = useState<string|null>(null)
-    const [notificationMessage, setNotificationMessage] = useState('')
-    const LoginHookForm = useForm<ILoginForm>();
+
+
+
+    const LoginHookForm = useForm<ILoginForm>({
+        defaultValues: {
+            userId,
+        }
+    });
     const MessageHookForm = useForm<IMessageForm>();
 
     const icConnected = LoginHookForm.formState.isSubmitting || !!sseSource
 
     useEffect(() => {
-        window.addEventListener('beforeunload', () => closeConnection())
+        window.addEventListener('beforeunload', closeConnection);
+
         return () => {
-            window.removeEventListener('beforeunload', () => closeConnection())
+            window.removeEventListener('beforeunload', closeConnection);
             closeConnection()
         }
     }, [])
@@ -52,9 +63,6 @@ const Dashboard = () => {
      */
     const handleSubmitLoginHandler: SubmitHandler<ILoginForm> = formData => {
         // block.show();
-
-        console.log('formData.userId', formData.userId);
-
 
         if (!formData.userId) {
             toast.error('請先輸入UserId');
@@ -78,6 +86,7 @@ const Dashboard = () => {
         source.addEventListener('connected', (e) => {
             console.log('SSE 連接已建立', e)
             setSSESource(source)
+            getConnectedUsers();
 
             const data = JSON.parse(e.data)
             setPingList((prev) => [...prev, `連線確認: ${data.message}`])
@@ -98,39 +107,40 @@ const Dashboard = () => {
     };
 
     /**
-     * 送出訊息表單
+     * 送出訊息表單 (個別訊息)
      * @param formData
      */
     const handleSubmitMessageHandler: SubmitHandler<IMessageForm> = async formData => {
         // block.show();
 
-        if (!formData.message) {
+        if (isEmpty(formData.message)) {
             toast.error('請先輸入訊息');
             return;
         }
-        if (!activeUserId || !notificationMessage) {
-            toast.warning(`請輸入目標用戶 ID 和通知訊息`);
-            return
+        if (!activeUserId) {
+            toast.warning(`請選擇目標User`);
+            return;
         }
 
         try {
-            const response = await fetch('http://localhost:3333/notify-user', {
+            const response = await fetch(`${baseApiUrl}/notifyUser`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
                     userId: activeUserId,
-                    message: notificationMessage,
+                    message: formData.message,
                     eventType: 'notification'
                 })
             })
             const result = await response.json()
-            toast.warning(`個別通知結果 ${result.success ? '成功' : '失敗'}: ${result.message}`);
 
             if (result.success) {
-                setNotificationMessage('')
+                toast.success(`個別通知結果成功: ${result.message}`);
+                return;
             }
+            toast.error(`個別通知結果失敗: ${result.message}`);
         } catch (error) {
             console.error('個別通知失敗:', error)
             toast.error('個別通知失敗，請檢查伺服器狀態');
@@ -145,7 +155,7 @@ const Dashboard = () => {
         if (sseSource) {
             sseSource.close()
             setSSESource(null)
-            setPingList(['已断开连接，等待重新连接...'])
+            setPingList(['已關閉連線'])
         } else {
             toast.error('當前無連接');
             return;
@@ -174,13 +184,15 @@ const Dashboard = () => {
      */
     const triggerNotification = async () => {
         try {
+            const userId = LoginHookForm.getValues('userId');
+
             const response = await fetch(`${baseApiUrl}/trigger`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    message: `測試通知 - ${new Date().toLocaleTimeString()}`,
+                    message: `由${userId}發起廣播 - ${new Date().toISOString()}`,
                     eventType: 'notification'
                 })
             })
@@ -222,10 +234,12 @@ const Dashboard = () => {
             return <div>No message</div>
         }
 
-        return <Flex column className="align-items-start">
-            {pingList.map((item, index) => (
-                <div key={item + index}>{item}</div>
-            ))}
+        return <Flex column className="align-items-start text-left">
+            <ul>
+                {pingList.map((item, index) => (
+                    <li key={item + index}>{item}</li>
+                ))}
+            </ul>
         </Flex>
     }
 
@@ -239,9 +253,11 @@ const Dashboard = () => {
         }
 
         return <Flex column className="align-items-start">
+            <ul>
             {notifications.map((item, index) => (
-                <div key={item + index} style={{ color: 'green' }}>{item}</div>
+                <li key={item + index} style={{ color: 'green' }}>{item}</li>
             ))}
+            </ul>
         </Flex>
     }
 
@@ -255,7 +271,7 @@ const Dashboard = () => {
                                 <Controller
                                     control={LoginHookForm.control}
                                     name="userId"
-                                    defaultValue="tester"
+                                    defaultValue=""
                                     rules={{
                                         required: '請輸入帳號',
                                     }}
@@ -310,7 +326,7 @@ const Dashboard = () => {
                                     發送個別通知
                                 </button>
 
-                                <button type="button">
+                                <button type="button" onClick={triggerNotification}>
                                     廣播通知
                                 </button>
                             </form>
@@ -328,7 +344,7 @@ const Dashboard = () => {
 
                     <Flex column className="align-items-start mb-10">
                         <h3>通知訊息:</h3>
-                        <Flex column className="align-items-start mb-10">
+                        <Flex column className="align-items-start mb-10 text-left">
                             {renderNotificationsMessage()}
                         </Flex>
                     </Flex>
