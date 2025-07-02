@@ -1,0 +1,14 @@
+name = "react-sse-example"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+[env.production]
+name = "react-sse-example-prod"
+
+[env.staging]
+name = "react-sse-example-staging"
+
+[[kv_namespaces]]
+binding = "SSE_CONNECTIONS"
+id = "your-kv-namespace-id"
+preview_id = "your-preview-kv-namespace-id" 
