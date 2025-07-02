@@ -41,6 +41,10 @@ input, button, select {
   font-family: inherit;
   transition: border-color 0.25s;
 }
+
+select{
+    color: #000;
+}
 input:disabled, button:disabled, select:disabled {
     opacity: .5;
 }

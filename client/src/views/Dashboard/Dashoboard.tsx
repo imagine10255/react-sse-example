@@ -22,6 +22,7 @@ interface ILoginForm {
  */
 interface IMessageForm {
     message: string
+    eventType: 'notification'|'custom'
 }
 
 const baseApiUrl = `${window.location.protocol}//${window.location.hostname}:8081`;
@@ -31,6 +32,8 @@ const Dashboard = () => {
     const [sseSource, setSSESource] = useState<EventSource|null>(null)
 
     const [pingList, setPingList] = useState<string[]>([])
+    const [customList, setCustomList] = useState<string[]>([])
+
     const [notifications, setNotifications] = useState<string[]>([])
     const [connectedUsers, setConnectedUsers] = useState<string[]>([])
 
@@ -43,7 +46,12 @@ const Dashboard = () => {
             userId,
         }
     });
-    const MessageHookForm = useForm<IMessageForm>();
+    const MessageHookForm = useForm<IMessageForm>({
+        defaultValues: {
+            eventType: 'notification',
+            message: '',
+        }
+    });
 
     const icConnected = LoginHookForm.formState.isSubmitting || !!sseSource
 
@@ -77,7 +85,6 @@ const Dashboard = () => {
         const source = new EventSource(`${baseApiUrl}/sse?userId=${formData.userId}`)
 
         source.addEventListener('open', () => {
-            console.log('Connection Opened')
             setPingList(['已建立連線，準備傳輸數據...'])
         })
         source.addEventListener('error', (e) => {
@@ -96,10 +103,10 @@ const Dashboard = () => {
             setPingList((prev) => [...prev, e.data])
         })
         source.addEventListener('custom', (e) => {
-            console.log(e)
+            const data = JSON.parse(e.data)
+            setCustomList((prev) => [...prev, `${data.message} (${data.timestamp})`])
         })
         source.addEventListener('notification', (e) => {
-            console.log('收到通知:', e)
             const data = JSON.parse(e.data)
             setNotifications((prev) => [...prev, `${data.message} (${data.timestamp})`])
         })
@@ -131,7 +138,7 @@ const Dashboard = () => {
                 body: JSON.stringify({
                     userId: activeUserId,
                     message: formData.message,
-                    eventType: 'notification'
+                    eventType: formData.eventType,
                 })
             })
             const result = await response.json()
@@ -255,7 +262,25 @@ const Dashboard = () => {
         return <Flex column className="align-items-start">
             <ul>
             {notifications.map((item, index) => (
-                <li key={item + index} style={{ color: 'green' }}>{item}</li>
+                <li key={item + index} style={{ color: '#588e56' }}>{item}</li>
+            ))}
+            </ul>
+        </Flex>
+    }
+
+    /**
+     * 渲染 通知 訊息
+     */
+    const renderCustomMessage = () => {
+
+        if(pingList.length === 0){
+            return <div>No message</div>
+        }
+
+        return <Flex column className="align-items-start">
+            <ul>
+            {customList.map((item, index) => (
+                <li key={item + index} style={{ color: '#4485bb' }}>{item}</li>
             ))}
             </ul>
         </Flex>
@@ -322,6 +347,23 @@ const Dashboard = () => {
                                     }}
                                 />
 
+                                <Controller
+                                    control={MessageHookForm.control}
+                                    name="eventType"
+                                    defaultValue="notification"
+                                    rules={{
+                                        required: '請選擇類型',
+                                    }}
+                                    render={({field, fieldState}) => {
+                                        return <select
+                                            {...field}>
+                                            <option value="notification">Notification</option>
+                                            <option value="custom">Custom</option>
+                                        </select>;
+                                    }}
+                                />
+
+
                                 <button type="submit">
                                     發送個別通知
                                 </button>
@@ -346,6 +388,16 @@ const Dashboard = () => {
                         <h3>通知訊息:</h3>
                         <Flex column className="align-items-start mb-10 text-left">
                             {renderNotificationsMessage()}
+                        </Flex>
+                    </Flex>
+                </Col>
+
+                <Col col={12} md>
+
+                    <Flex column className="align-items-start mb-10">
+                        <h3>客製訊息:</h3>
+                        <Flex column className="align-items-start mb-10 text-left">
+                            {renderCustomMessage()}
                         </Flex>
                     </Flex>
                 </Col>

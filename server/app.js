@@ -42,6 +42,7 @@ app.post('/notifyUser', (req, res) => {
     }
     const userConnection = sseConnections.get(userId)
 
+
     if (!userConnection) {
         return res.json({
             success: false,
@@ -154,14 +155,6 @@ app.get('/sse', async function (req, res) {
         timestamp: new Date().toISOString()
     })}\n\n`)
 
-    let count = 0
-
-    await new Promise((resolve) => setTimeout(resolve, 200))
-    res.write('retry: 0\n\n')
-    res.write(`event: sping\n`)
-    res.write(`data: _ping ${++count}\n\n`)
-    res.write(`event: custom\n`)
-    res.write(`data: custom ${count}\n\n`)
 })
 
 
