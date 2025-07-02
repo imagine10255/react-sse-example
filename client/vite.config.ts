@@ -15,4 +15,8 @@ export default defineConfig({
             '@': path.resolve(__dirname, './src'),
         }
     },
+    server: {
+        port: 1182,
+        host: '0.0.0.0', // for debug
+    },
 });

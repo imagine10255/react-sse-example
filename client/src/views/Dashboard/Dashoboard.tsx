@@ -24,7 +24,7 @@ interface IMessageForm {
     message: string
 }
 
-const baseApiUrl = 'http://localhost:8081';
+const baseApiUrl = `${window.location.protocol}//${window.location.hostname}:8081`;
 
 const Dashboard = () => {
     const {userId} = useParams<{userId: string}>();
@@ -264,7 +264,7 @@ const Dashboard = () => {
     return (
         <Container fluid>
             <Row>
-                <Col col="auto">
+                <Col col={12} md="auto">
                     <Flex column className="gap-2">
                         <Flex className="gap-2 mb-10">
                             <form onSubmit={LoginHookForm.handleSubmit(handleSubmitLoginHandler)}>
@@ -340,7 +340,7 @@ const Dashboard = () => {
 
                 </Col>
 
-                <Col col>
+                <Col col={12} md>
 
                     <Flex column className="align-items-start mb-10">
                         <h3>通知訊息:</h3>
