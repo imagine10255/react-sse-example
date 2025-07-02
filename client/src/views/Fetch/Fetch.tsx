@@ -1,9 +1,7 @@
-import {block} from '@acrool/react-block';
 import {Col, Container, Flex, Row} from '@acrool/react-grid';
-import {useLocale} from '@acrool/react-locale';
 import {toast} from '@acrool/react-toaster';
-import React, {useCallback, useEffect, useState} from 'react';
-import {useLocation, useNavigate, useParams} from 'react-router';
+import React, {useEffect, useState} from 'react';
+import {useParams} from 'react-router';
 import {Controller, SubmitHandler, useForm} from "react-hook-form";
 import clsx from 'clsx';
 import {isEmpty} from "@acrool/js-utils/equal";
@@ -116,7 +114,7 @@ const Dashboard = () => {
                 try {
                     while (true) {
                         const { done, value } = await reader.read();
-                        
+
                         if (done) {
                             console.log('Stream complete');
                             break;
@@ -131,10 +129,10 @@ const Dashboard = () => {
                                 const eventType = line.substring(7);
                                 continue;
                             }
-                            
+
                             if (line.startsWith('data: ')) {
                                 const data = line.substring(6);
-                                
+
                                 // 根據不同事件類型處理數據
                                 if (data.includes('"type":"connected"')) {
                                     const parsedData = JSON.parse(data);
