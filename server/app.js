@@ -6,16 +6,19 @@ const PORT = 8081
 // 儲存所有 SSE 連接，以用戶 ID 為 key
 const sseConnections = new Map()
 
+// 簡單的 CORS 中間件
 app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*')
-    res.header(
-        'Access-Control-Allow-Headers',
-        'Authorization,X-API-KEY, Origin, X-Requested-With, Content-Type, Accept, Access-Control-Request-Method'
-    )
-    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PATCH, PUT, DELETE')
-    res.header('Allow', 'GET, POST, PATCH, OPTIONS, PUT, DELETE')
-    next()
-})
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, cache-control, Authorization');
+
+    if (req.method === 'OPTIONS') {
+        res.sendStatus(200);
+        return;
+    }
+
+    next();
+});
 
 // 解析 JSON 請求體
 app.use(express.json())
@@ -53,7 +56,11 @@ app.post('/notifyUser', (req, res) => {
 
     try {
         userConnection.write(`event: ${eventType}\n`)
-        userConnection.write(`data: ${JSON.stringify({message, timestamp: new Date().toISOString()})}\n\n`)
+        userConnection.write(`data: ${JSON.stringify({
+            type: eventType,
+            message,
+            timestamp: new Date().toISOString()
+        })}\n\n`)
 
         res.json({
             success: true,
@@ -85,7 +92,11 @@ app.post('/trigger', (req, res) => {
     sseConnections.forEach((clientRes, userId) => {
         try {
             clientRes.write(`event: ${eventType}\n`)
-            clientRes.write(`data: ${JSON.stringify({message, timestamp: new Date().toISOString()})}\n\n`)
+            clientRes.write(`data: ${JSON.stringify({
+                type: eventType,
+                message,
+                timestamp: new Date().toISOString()
+            })}\n\n`)
             successCount++
         } catch (error) {
             console.log(`發送 SSE 訊息給用戶 ${userId} 時發生錯誤:`, error.message)
@@ -121,16 +132,25 @@ app.get('/users', (req, res) => {
  */
 app.get('/sse', async function (req, res) {
     const {userId} = req.query
+    const authHeader = req.headers.authorization
 
-    if (!userId) {
-        return res.status(400).send('需要提供 userId 參數')
+    // 從 Authorization header 中提取用戶 ID
+    let headerUserId = null
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        headerUserId = authHeader.substring(7)
+    }
+
+    // 驗證用戶身份
+    if (!userId || !headerUserId || userId !== headerUserId) {
+        console.log('身份驗證失敗:', { userId, headerUserId })
+        return res.status(401).send('身份驗證失敗')
     }
 
     console.log(`用戶 ${userId} 建立 SSE 連接`)
     res.set({
         'Cache-Control': 'no-cache',
         'Content-Type': 'text/event-stream',
-        Connection: 'keep-alive'
+        'Connection': 'keep-alive'
     })
     res.flushHeaders()
 
@@ -150,10 +170,37 @@ app.get('/sse', async function (req, res) {
     // 發送初始連接確認訊息
     res.write(`event: connected\n`)
     res.write(`data: ${JSON.stringify({
+        type: 'connected',
         message: `用戶 ${userId} SSE 連接已建立`,
         userId,
         timestamp: new Date().toISOString()
     })}\n\n`)
+
+    // 定期發送 ping 訊息保持連接活躍
+    const pingInterval = setInterval(() => {
+        if (shouldStop) {
+            clearInterval(pingInterval)
+            return
+        }
+
+        try {
+            res.write(`event: ping\n`)
+            res.write(`data: ${JSON.stringify({
+                type: 'ping',
+                message: `Ping from server - ${new Date().toISOString()}`,
+                timestamp: new Date().toISOString()
+            })}\n\n`)
+        } catch (error) {
+            console.log(`發送 ping 給用戶 ${userId} 時發生錯誤:`, error.message)
+            clearInterval(pingInterval)
+            sseConnections.delete(userId)
+        }
+    }, 30000) // 每30秒發送一次 ping
+
+    // 清理定時器
+    res.on('close', () => {
+        clearInterval(pingInterval)
+    })
 
 })
 
