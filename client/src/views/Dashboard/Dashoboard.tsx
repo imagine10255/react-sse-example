@@ -16,16 +16,24 @@ interface ILoginForm {
     userId: string
 }
 
+/**
+ * Message
+ */
+interface IMessageForm {
+    message: string
+}
+
 const baseApiUrl = 'http://localhost:3333';
 
 const Dashboard = () => {
     const [sseSource, setSSESource] = useState<EventSource|null>(null)
     const [pingList, setPingList] = useState<string[]>([])
     const [notifications, setNotifications] = useState<string[]>([])
-    const [connectedUsers, setConnectedUsers] = useState([])
-    const [targetUserId, setTargetUserId] = useState('')
+    const [connectedUsers, setConnectedUsers] = useState<string[]>([])
+    const [activeUserId, setActiveUserId] = useState<string|null>(null)
     const [notificationMessage, setNotificationMessage] = useState('')
     const LoginHookForm = useForm<ILoginForm>();
+    const MessageHookForm = useForm<IMessageForm>();
 
     const icConnected = LoginHookForm.formState.isSubmitting || !!sseSource
 
@@ -39,7 +47,7 @@ const Dashboard = () => {
 
 
     /**
-     * 送出表單
+     * 送出登入表單
      * @param formData
      */
     const handleSubmitLoginHandler: SubmitHandler<ILoginForm> = formData => {
@@ -90,6 +98,47 @@ const Dashboard = () => {
     };
 
     /**
+     * 送出訊息表單
+     * @param formData
+     */
+    const handleSubmitMessageHandler: SubmitHandler<IMessageForm> = async formData => {
+        // block.show();
+
+        if (!formData.message) {
+            toast.error('請先輸入訊息');
+            return;
+        }
+        if (!activeUserId || !notificationMessage) {
+            toast.warning(`請輸入目標用戶 ID 和通知訊息`);
+            return
+        }
+
+        try {
+            const response = await fetch('http://localhost:3333/notify-user', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    userId: activeUserId,
+                    message: notificationMessage,
+                    eventType: 'notification'
+                })
+            })
+            const result = await response.json()
+            toast.warning(`個別通知結果 ${result.success ? '成功' : '失敗'}: ${result.message}`);
+
+            if (result.success) {
+                setNotificationMessage('')
+            }
+        } catch (error) {
+            console.error('個別通知失敗:', error)
+            toast.error('個別通知失敗，請檢查伺服器狀態');
+        }
+
+    };
+
+    /**
      * 關閉連線
      */
     const closeConnection = () => {
@@ -121,13 +170,6 @@ const Dashboard = () => {
     }
 
     /**
-     * 建立連線
-     */
-    const createConnection = () => {
-
-    }
-
-    /**
      * 廣播全體使用者訊息
      */
     const triggerNotification = async () => {
@@ -151,50 +193,55 @@ const Dashboard = () => {
 
 
     /**
-     * 通知特定使用者訊息
+     * 渲染連線列表
      */
-    const notifySpecificUser = async () => {
-        if (!targetUserId || !notificationMessage) {
-            toast.warning(`請輸入目標用戶 ID 和通知訊息`);
-            return
-        }
-
-        try {
-            const response = await fetch('http://localhost:3333/notify-user', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    targetUserId,
-                    message: notificationMessage,
-                    eventType: 'notification'
-                })
-            })
-            const result = await response.json()
-            toast.warning(`個別通知結果 ${result.success ? '成功' : '失敗'}: ${result.message}`);
-
-            if (result.success) {
-                setNotificationMessage('')
-            }
-        } catch (error) {
-            console.error('個別通知失敗:', error)
-            toast.error('個別通知失敗，請檢查伺服器狀態');
-        }
-    }
-
-
     const renderConnectionList  = () => {
         if(connectedUsers.length === 0){
-            return <p>暫無連接用戶</p>;
+            return <p>No users</p>;
         }
 
         return <Flex column className="align-items-start">
             <ul>
-                {connectedUsers.map((user, idx) => (
-                    <li key={idx}>{user}</li>
+                {connectedUsers.map((userId, idx) => (
+                    <li key={idx} onClick={() => setActiveUserId(userId)}>
+                        <span className="mr-2">{userId}</span>
+                        <span>{activeUserId === userId ? '🤛': ''}</span>
+                    </li>
                 ))}
             </ul>
+        </Flex>
+    }
+
+
+    /**
+     * 渲染 Ping 訊息
+     */
+    const renderPingMessage = () => {
+
+        if(pingList.length === 0){
+            return <div>No message</div>
+        }
+
+        return <Flex column className="align-items-start">
+            {pingList.map((item, index) => (
+                <div key={item + index}>{item}</div>
+            ))}
+        </Flex>
+    }
+
+    /**
+     * 渲染 通知 訊息
+     */
+    const renderNotificationsMessage = () => {
+
+        if(pingList.length === 0){
+            return <div>No message</div>
+        }
+
+        return <Flex column className="align-items-start">
+            {notifications.map((item, index) => (
+                <div key={item + index} style={{ color: 'green' }}>{item}</div>
+            ))}
         </Flex>
     }
 
@@ -203,7 +250,7 @@ const Dashboard = () => {
             <Row>
                 <Col col="auto">
                     <Flex column className="gap-2">
-                        <Flex className="gap-2">
+                        <Flex className="gap-2 mb-10">
                             <form onSubmit={LoginHookForm.handleSubmit(handleSubmitLoginHandler)}>
                                 <Controller
                                     control={LoginHookForm.control}
@@ -226,84 +273,69 @@ const Dashboard = () => {
                                 <button type="button" onClick={closeConnection} className={clsx({'d-none': !icConnected})}>斷開連線</button>
                             </form>
                         </Flex>
-                        <Flex column className="align-items-start">
+
+
+
+                        <Flex column className="align-items-start mb-10">
                             <Flex className="align-items-center gap-2">
-                                <div>連接用戶列表:</div>
+                                <h3>連接用戶列表:</h3>
                                 <button type="button" onClick={getConnectedUsers}>
-                                    Refresh
+                                    重整
                                 </button>
                             </Flex>
                             {renderConnectionList()}
                         </Flex>
 
-                        <Flex column className="align-items-start">
-                            <div>個別通知</div>
-                            <select>
-                                {connectedUsers.map((userId) => (
-                                    <option value={userId} key={userId}>{userId}</option>
-                                ))}
-                            </select>
+                        <Flex column className="gap-2 mb-10">
+
+                            <form onSubmit={MessageHookForm.handleSubmit(handleSubmitMessageHandler)}>
+
+                                <Controller
+                                    control={MessageHookForm.control}
+                                    name="message"
+                                    defaultValue=""
+                                    rules={{
+                                        required: '請輸入訊息',
+                                    }}
+                                    render={({field, fieldState}) => {
+                                        return <input
+                                            {...field}
+                                            placeholder="輸入通知訊息"
+                                            autoComplete="username"
+                                        />;
+                                    }}
+                                />
+
+                                <button type="submit">
+                                    發送個別通知
+                                </button>
+
+                                <button type="button">
+                                    廣播通知
+                                </button>
+                            </form>
                         </Flex>
-                        <div>個別通知</div>
-                        <div>
 
-
-                            <input
-                                type="text"
-                                placeholder="通知訊息"
-                                value={notificationMessage}
-                                onChange={(e) => setNotificationMessage(e.target.value)}
-                                style={{ marginRight: '10px', width: '200px' }}
-                            />
-                            <button onClick={notifySpecificUser}>
-                                發送個別通知
-                            </button>
-                        </div>
+                        <Flex column className="align-items-start mb-10">
+                            <h3>Ping 訊息:</h3>
+                            {renderPingMessage()}
+                        </Flex>
                     </Flex>
 
                 </Col>
-                <Col col="auto" className="d-flex gap-2">
 
-                </Col>
-                <Col col>
-                    <button type="button" onClick={triggerNotification}>
-                        觸發全體通知
-                    </button>
-
-                </Col>
-            </Row>
-
-            <Row>
                 <Col col>
 
+                    <Flex column className="align-items-start mb-10">
+                        <h3>通知訊息:</h3>
+                        <Flex column className="align-items-start mb-10">
+                            {renderNotificationsMessage()}
+                        </Flex>
+                    </Flex>
                 </Col>
             </Row>
 
 
-            <div style={{ marginBottom: '20px' }}>
-
-            </div>
-
-            <div style={{ marginBottom: '20px', padding: '10px', border: '1px solid #ccc' }}>
-
-            </div>
-
-            <div style={{ marginBottom: '20px' }}>
-
-            </div>
-
-            <div style={{ marginTop: '10px' }}>
-                <h3>Ping 訊息:</h3>
-                {pingList.map((item, index) => (
-                    <div key={item + index}>{item}</div>
-                ))}
-            </div>
-            <div style={{ marginTop: '10px' }}>
-                <h3>通知訊息:</h3>
-                {notifications.map((item, index) => (
-                    <div key={item + index} style={{ color: 'green' }}>{item}</div>
-                ))}
-            </div>
         </Container>
     );
 };
