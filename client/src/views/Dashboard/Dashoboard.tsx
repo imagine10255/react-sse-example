@@ -1,11 +1,20 @@
 import {block} from '@acrool/react-block';
-import {Flex} from '@acrool/react-grid';
+import {Col, Container, Flex, Row} from '@acrool/react-grid';
 import {useLocale} from '@acrool/react-locale';
 import {toast} from '@acrool/react-toaster';
-import React, {useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import {useNavigate} from 'react-router';
+import {Controller, SubmitHandler, useForm} from "react-hook-form";
+import clsx from 'clsx';
 
 
+
+/**
+ * Login
+ */
+interface ILoginForm {
+    userId: string
+}
 
 const baseApiUrl = 'http://localhost:3333';
 
@@ -13,10 +22,12 @@ const Dashboard = () => {
     const [sseSource, setSSESource] = useState<EventSource|null>(null)
     const [pingList, setPingList] = useState<string[]>([])
     const [notifications, setNotifications] = useState<string[]>([])
-    const [userId, setUserId] = useState<string>('')
     const [connectedUsers, setConnectedUsers] = useState([])
     const [targetUserId, setTargetUserId] = useState('')
     const [notificationMessage, setNotificationMessage] = useState('')
+    const LoginHookForm = useForm<ILoginForm>();
+
+    const icConnected = LoginHookForm.formState.isSubmitting || !!sseSource
 
     useEffect(() => {
         window.addEventListener('beforeunload', () => closeConnection())
@@ -26,6 +37,57 @@ const Dashboard = () => {
         }
     }, [])
 
+
+    /**
+     * 送出表單
+     * @param formData
+     */
+    const handleSubmitLoginHandler: SubmitHandler<ILoginForm> = formData => {
+        // block.show();
+
+        console.log('formData.userId', formData.userId);
+
+
+        if (!formData.userId) {
+            toast.error('請先輸入UserId');
+            return;
+        }
+
+        if (sseSource) {
+            toast.error('建立新連線前，請先斷開連線');
+            return;
+        }
+
+        const source = new EventSource(`${baseApiUrl}/sse?userId=${formData.userId}`)
+
+        source.addEventListener('open', () => {
+            console.log('Connection Opened')
+            setPingList(['已建立連線，準備傳輸數據...'])
+        })
+        source.addEventListener('error', (e) => {
+            console.log('Connection Error', e)
+        })
+        source.addEventListener('connected', (e) => {
+            console.log('SSE 連接已建立', e)
+            setSSESource(source)
+
+            const data = JSON.parse(e.data)
+            setPingList((prev) => [...prev, `連線確認: ${data.message}`])
+        })
+        source.addEventListener('ping', (e) => {
+            console.log(e)
+            setPingList((prev) => [...prev, e.data])
+        })
+        source.addEventListener('custom', (e) => {
+            console.log(e)
+        })
+        source.addEventListener('notification', (e) => {
+            console.log('收到通知:', e)
+            const data = JSON.parse(e.data)
+            setNotifications((prev) => [...prev, `${data.message} (${data.timestamp})`])
+        })
+
+    };
 
     /**
      * 關閉連線
@@ -62,41 +124,7 @@ const Dashboard = () => {
      * 建立連線
      */
     const createConnection = () => {
-        if (!userId) {
-            toast.error('請先輸入UserId');
-            return
-        }
 
-        if (!sseSource) {
-            const source = new EventSource(`${baseApiUrl}/sse?userId=${userId}`)
-            setSSESource(source)
-            source.addEventListener('open', () => {
-                console.log('Connection Opened')
-                setPingList(['已建立連線，準備傳輸數據...'])
-            })
-            source.addEventListener('error', (e) => {
-                console.log('Connection Error', e)
-            })
-            source.addEventListener('connected', (e) => {
-                console.log('SSE 連接已建立', e)
-                const data = JSON.parse(e.data)
-                setPingList((prev) => [...prev, `連線確認: ${data.message}`])
-            })
-            source.addEventListener('ping', (e) => {
-                console.log(e)
-                setPingList((prev) => [...prev, e.data])
-            })
-            source.addEventListener('custom', (e) => {
-                console.log(e)
-            })
-            source.addEventListener('notification', (e) => {
-                console.log('收到通知:', e)
-                const data = JSON.parse(e.data)
-                setNotifications((prev) => [...prev, `${data.message} (${data.timestamp})`])
-            })
-        } else {
-            toast.warning('建立新連線前，請先斷開連線');
-        }
     }
 
     /**
@@ -155,70 +183,113 @@ const Dashboard = () => {
         }
     }
 
+
+    const renderConnectionList  = () => {
+        if(connectedUsers.length === 0){
+            return <p>暫無連接用戶</p>;
+        }
+
+        return <Flex column className="align-items-start">
+            <ul>
+                {connectedUsers.map((user, idx) => (
+                    <li key={idx}>{user}</li>
+                ))}
+            </ul>
+        </Flex>
+    }
+
     return (
-        <div>
-            <div style={{ marginBottom: '20px', padding: '10px', border: '1px solid #ccc' }}>
-                <h3>Login</h3>
-                <div>
-                    <input
-                        type="text"
-                        placeholder="UserId"
-                        value={userId}
-                        onChange={(e) => setUserId(e.target.value)}
-                        style={{ marginRight: '10px' }}
-                    />
-                </div>
-            </div>
+        <Container fluid>
+            <Row>
+                <Col col="auto">
+                    <Flex column className="gap-2">
+                        <Flex className="gap-2">
+                            <form onSubmit={LoginHookForm.handleSubmit(handleSubmitLoginHandler)}>
+                                <Controller
+                                    control={LoginHookForm.control}
+                                    name="userId"
+                                    defaultValue="tester"
+                                    rules={{
+                                        required: '請輸入帳號',
+                                    }}
+                                    render={({field, fieldState}) => {
+                                        return <input
+                                            {...field}
+                                            placeholder="帳號"
+                                            autoComplete="username"
+                                            disabled={icConnected}
+                                        />;
+                                    }}
+                                />
 
-            <div style={{ marginBottom: '20px' }}>
-                <button onClick={createConnection} disabled={!userId}>
-                    建立連線
-                </button>
-                <button onClick={closeConnection}>
-                    斷開連線
-                </button>
-                <button onClick={triggerNotification}>
-                    觸發全體通知
-                </button>
-                <button onClick={getConnectedUsers}>
-                    取得所有已連接用戶
-                </button>
-            </div>
+                                <button type="submit" className={clsx({'d-none': icConnected})}>建立連線</button>
+                                <button type="button" onClick={closeConnection} className={clsx({'d-none': !icConnected})}>斷開連線</button>
+                            </form>
+                        </Flex>
+                        <Flex column className="align-items-start">
+                            <Flex className="align-items-center gap-2">
+                                <div>連接用戶列表:</div>
+                                <button type="button" onClick={getConnectedUsers}>
+                                    Refresh
+                                </button>
+                            </Flex>
+                            {renderConnectionList()}
+                        </Flex>
 
-            <div style={{ marginBottom: '20px', padding: '10px', border: '1px solid #ccc' }}>
-                <h3>個別通知</h3>
-                <div>
-                    <input
-                        type="text"
-                        placeholder="目標用戶 ID"
-                        value={targetUserId}
-                        onChange={(e) => setTargetUserId(e.target.value)}
-                        style={{ marginRight: '10px' }}
-                    />
-                    <input
-                        type="text"
-                        placeholder="通知訊息"
-                        value={notificationMessage}
-                        onChange={(e) => setNotificationMessage(e.target.value)}
-                        style={{ marginRight: '10px', width: '200px' }}
-                    />
-                    <button onClick={notifySpecificUser}>
-                        發送個別通知
+                        <Flex column className="align-items-start">
+                            <div>個別通知</div>
+                            <select>
+                                {connectedUsers.map((userId) => (
+                                    <option value={userId} key={userId}>{userId}</option>
+                                ))}
+                            </select>
+                        </Flex>
+                        <div>個別通知</div>
+                        <div>
+
+
+                            <input
+                                type="text"
+                                placeholder="通知訊息"
+                                value={notificationMessage}
+                                onChange={(e) => setNotificationMessage(e.target.value)}
+                                style={{ marginRight: '10px', width: '200px' }}
+                            />
+                            <button onClick={notifySpecificUser}>
+                                發送個別通知
+                            </button>
+                        </div>
+                    </Flex>
+
+                </Col>
+                <Col col="auto" className="d-flex gap-2">
+
+                </Col>
+                <Col col>
+                    <button type="button" onClick={triggerNotification}>
+                        觸發全體通知
                     </button>
-                </div>
+
+                </Col>
+            </Row>
+
+            <Row>
+                <Col col>
+
+                </Col>
+            </Row>
+
+
+            <div style={{ marginBottom: '20px' }}>
+
+            </div>
+
+            <div style={{ marginBottom: '20px', padding: '10px', border: '1px solid #ccc' }}>
+
             </div>
 
             <div style={{ marginBottom: '20px' }}>
-                <h3>連接用戶列表:</h3>
-                {connectedUsers.length > 0 ? (
-                    <ul>
-                        {connectedUsers.map((user, index) => (
-                            <li key={index}>{user}</li>
-                        ))}
-                    </ul>
-                ) : (
-                    <p>暫無連接用戶</p>
-                )}
+
             </div>
 
             <div style={{ marginTop: '10px' }}>
@@ -233,7 +304,7 @@ const Dashboard = () => {
                     <div key={item + index} style={{ color: 'green' }}>{item}</div>
                 ))}
             </div>
-        </div>
+        </Container>
     );
 };
 
