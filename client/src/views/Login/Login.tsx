@@ -1,6 +1,5 @@
 import {block} from '@acrool/react-block';
 import {dialog} from '@acrool/react-dialog';
-import {FetcherException, useAuthState} from '@acrool/react-fetcher';
 import {FCProps} from '@acrool/react-grid';
 import {toast} from '@acrool/react-toaster';
 import React, {useCallback} from 'react';
@@ -8,7 +7,6 @@ import {Controller, SubmitHandler, useForm} from 'react-hook-form';
 import styled from 'styled-components';
 
 import Banner from '@/components/Banner';
-import {usePostAuthSignLoginMutation} from '@/store/__generated__';
 
 import {LoginRoot} from './styles';
 import {ILoginProps} from './types';
@@ -25,8 +23,6 @@ const Login = ({
     className,
     style,
 }: ILoginProps & FCProps) => {
-    const [AuthLoginMutation] = usePostAuthSignLoginMutation();
-    const {updateTokens} = useAuthState();
     const HookForm = useForm<IForm>();
 
     /**
@@ -35,28 +31,6 @@ const Login = ({
      */
     const handleSubmitHandler: SubmitHandler<IForm> = useCallback(formData => {
         block.show();
-
-        AuthLoginMutation({
-            variables: {
-                body: formData,
-            }
-        })
-            .unwrap()
-            .then(res => {
-                toast.success('登入成功');
-                updateTokens(res.authTokens);
-            })
-            .catch(err => {
-                if(err instanceof FetcherException){
-                    const errFormat = err as FetcherException<{newAccount: string}>;
-                    dialog.warning(`建議帳號 ${errFormat.args.newAccount}`);
-                }else{
-                    toast.error('登入失敗');
-                }
-            })
-            .finally(() => {
-                block.hide();
-            });
 
 
     }, []);

@@ -4,7 +4,6 @@ import {persistKey, persistVersion} from '@/config/app';
 import {gridConfig} from '@/config/grid';
 import {DEFAULT_LOCALE,ELocales} from '@/config/locale';
 import {siteConfig} from '@/config/site';
-import configureStore from '@/library/redux/configureStore';
 import {asset, getAppVersion} from '@/utils/config';
 
 
@@ -50,7 +49,6 @@ function getPreloadedState() {
 }
 
 console.log('info: ', JSON.stringify({
-    nodeEnv: process.env.NODE_ENV,
     version: getAppVersion(),
     assetUrl: asset('/imagePath'),
     language: navigator.language,
@@ -60,18 +58,13 @@ console.log('info: ', JSON.stringify({
 
 
 
-const preloadedState = getPreloadedState();
-const {store, reduxSelector, reduxDispatch} = configureStore(preloadedState);
 // const history = createReduxHistory(store);
 
 const appTheme = siteConfig.theme;
 
 
 export {
-    store,
     // history,
     gridConfig,
     appTheme,
-    reduxSelector,
-    reduxDispatch,
 };

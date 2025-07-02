@@ -22,13 +22,13 @@
         "noEmit": false,
         "downlevelIteration": true,
         "jsx": "react-jsx",
-        "baseUrl": ".",
+        "baseUrl": "./",
         "paths": {
             "@/*": ["src/*"]
         }
     },
     "include": [
-        "src",
+      "src"
     ],
     "exclude": [
         "node_modules",
@@ -36,8 +36,8 @@
         "**/*.spec.ts"
     ],
     "files": [
-        "typings/global.d.ts",
-        "typings/module.d.ts"
+      "typings/global.d.ts",
+      "typings/module.d.ts"
     ],
-    "references": [{ "path": "./tsconfig.node.json" }]
+    "references": [{ "path": "./tsconfig.node.json"}]
 }
