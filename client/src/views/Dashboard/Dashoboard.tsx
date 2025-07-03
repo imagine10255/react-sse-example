@@ -204,7 +204,7 @@ const Dashboard = () => {
                 })
             })
             const result = await response.json()
-            toast.warning(`發送成功: ${result.message}`);
+            toast.success(`發送成功: ${result.message}`);
         } catch (error) {
             toast.error(`發送失敗，請檢查伺服器狀態`);
         }

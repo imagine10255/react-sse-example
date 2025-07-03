@@ -113,6 +113,7 @@ const Dashboard = () => {
             const processStream = async () => {
                 try {
                     while (true) {
+
                         const { done, value } = await reader.read();
 
                         if (done) {
@@ -122,6 +123,7 @@ const Dashboard = () => {
 
                         // 將 Uint8Array 轉換為字符串
                         const chunk = new TextDecoder().decode(value);
+
                         const lines = chunk.split('\n');
 
                         for (const line of lines) {
@@ -258,7 +260,7 @@ const Dashboard = () => {
                 })
             })
             const result = await response.json()
-            toast.warning(`發送成功: ${result.message}`);
+            toast.success(`發送成功: ${result.message}`);
         } catch (error) {
             toast.error(`發送失敗，請檢查伺服器狀態`);
         }

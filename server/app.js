@@ -140,11 +140,13 @@ app.get('/sse', async function (req, res) {
         headerUserId = authHeader.substring(7)
     }
 
+    const authUserId = userId || headerUserId;
     // 驗證用戶身份
-    if (!userId || !headerUserId || userId !== headerUserId) {
+    if (!authUserId) {
         console.log('身份驗證失敗:', { userId, headerUserId })
         return res.status(401).send('身份驗證失敗')
     }
+
 
     console.log(`用戶 ${userId} 建立 SSE 連接`)
     res.set({
