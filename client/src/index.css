@@ -80,9 +80,6 @@ li{
     border-radius: 8px;
     text-align: left;
 }
-li:hover{
-    border-color: #646cff;
-}
 
 @media (prefers-color-scheme: light) {
   :root {

@@ -21,6 +21,7 @@ interface ILoginForm {
 interface IMessageForm {
     message: string
     eventType: 'notification'|'custom'
+    selectedUserId: string
 }
 
 const baseApiUrl = `${window.location.protocol}//${window.location.hostname}:8081`;
@@ -36,8 +37,6 @@ const Dashboard = () => {
     const [notifications, setNotifications] = useState<string[]>([])
     const [connectedUsers, setConnectedUsers] = useState<string[]>([])
 
-    const [activeUserId, setActiveUserId] = useState<string|null>(null)
-
 
 
     const LoginHookForm = useForm<ILoginForm>({
@@ -49,10 +48,11 @@ const Dashboard = () => {
         defaultValues: {
             eventType: 'notification',
             message: '',
+            selectedUserId: '',
         }
     });
 
-    const icConnected = LoginHookForm.formState.isSubmitting || !!abortController
+    const isConnected = LoginHookForm.formState.isSubmitting || !!abortController
 
     useEffect(() => {
         window.addEventListener('beforeunload', closeConnection);
@@ -179,7 +179,7 @@ const Dashboard = () => {
             toast.error('請先輸入訊息');
             return;
         }
-        if (!activeUserId) {
+        if (!formData.selectedUserId) {
             toast.warning(`請選擇目標User`);
             return;
         }
@@ -191,7 +191,7 @@ const Dashboard = () => {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    userId: activeUserId,
+                    userId: formData.selectedUserId,
                     message: formData.message,
                     eventType: formData.eventType,
                 })
@@ -255,7 +255,7 @@ const Dashboard = () => {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    message: `由${userId}發起廣播 - ${new Date().toISOString()}`,
+                    message: `由${userId}發起廣播`,
                     eventType: 'notification'
                 })
             })
@@ -276,13 +276,35 @@ const Dashboard = () => {
         }
 
         return <Flex column className="align-items-start">
-            <ul>
-                {connectedUsers.map((userId, idx) => (
-                    <li key={idx} onClick={() => setActiveUserId(userId)}>
-                        <span className="mr-2">{userId}</span>
-                        <span>{activeUserId === userId ? '🤛': ''}</span>
-                    </li>
-                ))}
+            <ul style={{listStyle: 'none', padding: 0, margin: 0}}>
+                {connectedUsers.map((userId, idx) => {
+                    const id = `active_${userId}`;
+
+                    return <li key={idx}>
+                        <label htmlFor={id}>
+                            <span className="mr-2">
+                                <Controller
+                                    control={MessageHookForm.control}
+                                    name="selectedUserId"
+                                    render={({field}) => (
+                                        <input
+                                            type="radio"
+                                            name="activeId"
+                                            id={id}
+                                            value={userId}
+                                            checked={field.value === userId}
+                                            // disabled={isConnected}
+                                            onChange={(e) => {
+                                                field.onChange(e.target.value);
+                                            }}
+                                        />
+                                    )}
+                                />
+                            </span>
+                            <span className="mr-2">{userId}</span>
+                        </label>
+                    </li>;
+                })}
             </ul>
         </Flex>
     }
@@ -345,7 +367,7 @@ const Dashboard = () => {
     return (
         <Container fluid>
             <Row>
-                <Col col={12} md="auto">
+                <Col col={12} md>
                     <Flex column className="gap-2">
                         <Flex className="gap-2 mb-10">
                             <form onSubmit={LoginHookForm.handleSubmit(handleSubmitLoginHandler)}>
@@ -361,13 +383,13 @@ const Dashboard = () => {
                                             {...field}
                                             placeholder="帳號"
                                             autoComplete="username"
-                                            disabled={icConnected}
+                                            disabled={isConnected}
                                         />;
                                     }}
                                 />
 
-                                <button type="submit" className={clsx({'d-none': icConnected})}>建立連線</button>
-                                <button type="button" onClick={closeConnection} className={clsx({'d-none': !icConnected})}>斷開連線</button>
+                                <button type="submit" className={clsx({'d-none': isConnected})}>建立連線</button>
+                                <button type="button" onClick={closeConnection} className={clsx({'d-none': !isConnected})}>斷開連線</button>
                             </form>
                         </Flex>
 
@@ -441,7 +463,7 @@ const Dashboard = () => {
                 <Col col={12} md>
 
                     <Flex column className="align-items-start mb-10">
-                        <h3>通知訊息:</h3>
+                        <h3>Notifications:</h3>
                         <Flex column className="align-items-start mb-10 text-left">
                             {renderNotificationsMessage()}
                         </Flex>
@@ -451,7 +473,7 @@ const Dashboard = () => {
                 <Col col={12} md>
 
                     <Flex column className="align-items-start mb-10">
-                        <h3>客製訊息:</h3>
+                        <h3>Customer:</h3>
                         <Flex column className="align-items-start mb-10 text-left">
                             {renderCustomMessage()}
                         </Flex>
