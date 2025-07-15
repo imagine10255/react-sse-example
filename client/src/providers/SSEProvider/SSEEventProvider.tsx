@@ -4,17 +4,14 @@ import {SSEContext, SSEContextType, SSEEventState} from './sseContext';
 import logger from "@acrool/js-logger";
 import {api} from "@/providers/SSEProvider/api";
 
-export interface SSEMessage {
-    type: 'connected' | 'ping' | 'custom' | 'notification';
-    message: string;
-    timestamp?: string;
-}
+
+import { refreshConnectedUsersApi, sendMessageApi, broadcastMessageApi } from './api';
 
 
 interface IProps { children: React.ReactNode }
 
 /**
- * SSE Provider
+ * SSE Provider (EventSource)
  * @param children
  */
 export const SSEEventProvider = ({children}: IProps) => {
@@ -46,18 +43,7 @@ export const SSEEventProvider = ({children}: IProps) => {
     }, [state.eventSource]);
 
     const refreshConnectedUsers = useCallback(async () => {
-        try {
-            const response = await fetch(api.users);
-            const result = await response.json();
-            if (result.success) {
-                setState(prev => ({
-                    ...prev,
-                    connectedUsers: result.data.users
-                }));
-            }
-        } catch (error) {
-            console.error('獲取用戶列表失敗:', error);
-        }
+        await refreshConnectedUsersApi(setState);
     }, []);
 
     // 連線
@@ -152,27 +138,7 @@ export const SSEEventProvider = ({children}: IProps) => {
      * 發送訊息
      */
     const sendMessage = useCallback(async (userId: string, message: string, eventType: 'notification' | 'custom') => {
-        try {
-            const response = await fetch(api.notifyUser, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    userId,
-                    message,
-                    eventType,
-                })
-            });
-            const result = await response.json();
-
-            if (result.success) {
-                toast.success(`個別通知結果成功: ${result.message}`);
-                return;
-            }
-            toast.error(`個別通知結果失敗: ${result.message}`);
-        } catch (error) {
-            console.error('個別通知失敗:', error);
-            toast.error('個別通知失敗，請檢查伺服器狀態');
-        }
+        await sendMessageApi(userId, message, eventType);
     }, []);
 
 
@@ -180,20 +146,7 @@ export const SSEEventProvider = ({children}: IProps) => {
      * 發送 Type 為 notification
      */
     const broadcastMessage = useCallback(async (message: string) => {
-        try {
-            const response = await fetch(api.trigger, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    message,
-                    eventType: 'notification'
-                })
-            });
-            const result = await response.json();
-            toast.success(`發送成功: ${result.message}`);
-        } catch (error) {
-            toast.error(`發送失敗，請檢查伺服器狀態`);
-        }
+        await broadcastMessageApi(message);
     }, []);
 
 

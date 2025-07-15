@@ -3,19 +3,15 @@ import {toast} from '@acrool/react-toaster';
 import {SSEContext, SSEContextType, SSEFetchState} from './sseContext';
 import logger from "@acrool/js-logger";
 import {api} from "@/providers/SSEProvider/api";
+import { refreshConnectedUsersApi, sendMessageApi, broadcastMessageApi } from './api';
 
-export interface SSEMessage {
-    type: 'connected' | 'ping' | 'custom' | 'notification';
-    message: string;
-    timestamp?: string;
-}
 
 
 
 interface IProps { children: React.ReactNode }
 
 /**
- * SSE Provider
+ * SSE Provider (Fetch)
  * @param children
  */
 export const SSEFetchProvider = ({children}: IProps) => {
@@ -54,19 +50,7 @@ export const SSEFetchProvider = ({children}: IProps) => {
      * 重新取得連線中的User
      */
     const refreshConnectedUsers = useCallback(async () => {
-        try {
-            const response = await fetch(api.users);
-            const result = await response.json();
-            console.log('連接用戶列表:', result);
-            if (result.success) {
-                setState(prev => ({
-                    ...prev,
-                    connectedUsers: result.data.users
-                }));
-            }
-        } catch (error) {
-            console.error('獲取用戶列表失敗:', error);
-        }
+        await refreshConnectedUsersApi(setState);
     }, []);
 
 
@@ -122,7 +106,7 @@ export const SSEFetchProvider = ({children}: IProps) => {
                         const {done, value} = await reader.read();
 
                         if (done) {
-                            console.log('Stream complete');
+                            toast.error(`Stream complete`);
                             break;
                         }
 
@@ -172,17 +156,16 @@ export const SSEFetchProvider = ({children}: IProps) => {
                     }
                 } catch (error: any) {
                     if (error.name === 'AbortError') {
-                        console.log('Stream aborted');
+                        toast.error(`Stream aborted`);
                     } else {
-                        console.error('Stream processing error:', error);
+                        toast.error(`Stream processing error: ${error.message}`);
                     }
                 }
             };
 
             processStream();
         } catch (error) {
-            console.error('Connection Error:', error);
-            toast.error('連接失敗，請檢查伺服器狀態');
+            toast.error(`連接失敗，請檢查伺服器狀態 ${(error as any).message}`);
             setState(prev => ({
                 ...prev,
                 isConnected: false,
@@ -215,29 +198,7 @@ export const SSEFetchProvider = ({children}: IProps) => {
      * 發送訊息
      */
     const sendMessage = useCallback(async (userId: string, message: string, eventType: 'notification' | 'custom') => {
-        try {
-            const response = await fetch(api.notifyUser, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    userId,
-                    message,
-                    eventType,
-                })
-            });
-            const result = await response.json();
-
-            if (result.success) {
-                toast.success(`個別通知結果成功: ${result.message}`);
-                return;
-            }
-            toast.error(`個別通知結果失敗: ${result.message}`);
-        } catch (error) {
-            console.error('個別通知失敗:', error);
-            toast.error('個別通知失敗，請檢查伺服器狀態');
-        }
+        await sendMessageApi(userId, message, eventType);
     }, []);
 
 
@@ -245,22 +206,7 @@ export const SSEFetchProvider = ({children}: IProps) => {
      * 發送 Type 為 notification
      */
     const broadcastMessage = useCallback(async (message: string) => {
-        try {
-            const response = await fetch(api.trigger, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    message,
-                    eventType: 'notification'
-                })
-            });
-            const result = await response.json();
-            toast.success(`發送成功: ${result.message}`);
-        } catch (error) {
-            toast.error(`發送失敗，請檢查伺服器狀態`);
-        }
+        await broadcastMessageApi(message);
     }, []);
 
 
