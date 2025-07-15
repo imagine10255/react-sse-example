@@ -1,5 +1,5 @@
 import express, { Request, Response } from 'express';
-import { formatDateTime } from './src/utils';
+import { formatDateTime } from './utils';
 
 const app = express();
 const PORT = 8081;

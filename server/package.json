@@ -1,8 +1,8 @@
 {
   "name": "server",
-  "author": "Bruce Song <recall4056@gmail.com> (https://github.com/recallwei/)",
+  "author": "imagine10255<imagine10255@gmail.com>",
   "scripts": {
-    "dev": "npx ts-node app.ts",
+    "dev": "nodemon --watch './src/**/*.ts' --ext ts,js,mjs,cjs,json --exec 'ts-node ./src/app.ts'",
     "start": "node dist/app.js",
     "build": "tsc",
     "build:watch": "tsc --watch",
