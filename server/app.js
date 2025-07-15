@@ -1,18 +1,9 @@
 import express from 'express'
+import {formatDateTime} from './src/utils.js';
 
 const app = express()
 const PORT = 8081
 
-// 格式化日期函數：顯示 月/日 時:分:秒
-function formatDateTime(date) {
-    const month = date.getMonth() + 1 // getMonth() 返回 0-11
-    const day = date.getDate()
-    const hours = date.getHours().toString().padStart(2, '0')
-    const minutes = date.getMinutes().toString().padStart(2, '0')
-    const seconds = date.getSeconds().toString().padStart(2, '0')
-    
-    return `${month}/${day} ${hours}:${minutes}:${seconds}`
-}
 
 // 儲存所有 SSE 連接，以用戶 ID 為 key
 const sseConnections = new Map()
