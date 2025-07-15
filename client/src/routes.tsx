@@ -1,7 +1,6 @@
 import {createBrowserRouter} from 'react-router';
 
-import Dashboard from '@/views/Dashboard';
-import Fetch from '@/views/Fetch';
+import Home from '@/views/Home';
 import {SSEFetchProvider} from "@/providers/SSEProvider";
 import {SSEEventProvider} from "@/providers/SSEProvider/SSEEventProvider";
 
@@ -21,13 +20,13 @@ const routes = createBrowserRouter([
     {
         path: 'event/:userId?',
         children: [
-            {index: true, Component: withSSEProviders(Fetch)},
+            {index: true, Component: withSSEProviders(Home)},
         ],
     },
     {
         path: 'fetch/:userId?',
         children: [
-            {index: true, Component: withFetchProviders(Fetch)},
+            {index: true, Component: withFetchProviders(Home)},
         ],
     },
 ]);
