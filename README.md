@@ -4,7 +4,9 @@
 ## Server
 
 ```bash
-cd server && yarn dev
+cd server
+yarn dev
+PORT=8082 yarn dev
 ```
 
 ## Client
@@ -12,6 +14,7 @@ cd server && yarn dev
 ```bash
 cd client && yarn dev
 ```
+
 
 ## Test in client
 

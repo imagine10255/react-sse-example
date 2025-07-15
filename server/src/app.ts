@@ -2,7 +2,8 @@ import express from 'express';
 import apiRouter from './routes/api';
 
 const app = express();
-const PORT = 8081;
+// 優先使用環境變數PORT，然後是命令列參數，最後是預設值8081
+const PORT = process.env.PORT || 8081;
 
 // 簡單的 CORS 中間件
 app.use((req, res, next) => {

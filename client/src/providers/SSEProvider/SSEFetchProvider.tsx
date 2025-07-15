@@ -2,8 +2,8 @@ import React, {useState, useCallback, useEffect} from 'react';
 import {toast} from '@acrool/react-toaster';
 import {SSEContext, SSEContextType, SSEFetchState} from './sseContext';
 import logger from "@acrool/js-logger";
-import {api} from "@/providers/SSEProvider/api";
-import { refreshConnectedUsersApi, sendMessageApi, broadcastMessageApi } from './api';
+import { useApi } from './useApi';
+import {baseApi2Url} from "@/providers/SSEProvider/config";
 
 
 
@@ -15,6 +15,8 @@ interface IProps { children: React.ReactNode }
  * @param children
  */
 export const SSEFetchProvider = ({children}: IProps) => {
+    const { apiUrl, refreshConnectedUsersApi, sendMessageApi, broadcastMessageApi } = useApi(baseApi2Url);
+
     const [state, setState] = useState<SSEFetchState>({
         isConnected: false,
         pingList: [],
@@ -72,7 +74,7 @@ export const SSEFetchProvider = ({children}: IProps) => {
         setState(prev => ({...prev, abortController: controller, isConnected: true}));
 
         try {
-            const response = await fetch(`${api.sse}?userId=${userId}`, {
+            const response = await fetch(`${apiUrl.sse}?userId=${userId}`, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${userId}`,

@@ -2,10 +2,10 @@ import React, {useState, useCallback, useEffect} from 'react';
 import {toast} from '@acrool/react-toaster';
 import {SSEContext, SSEContextType, SSEEventState} from './sseContext';
 import logger from "@acrool/js-logger";
-import {api} from "@/providers/SSEProvider/api";
 
 
-import { refreshConnectedUsersApi, sendMessageApi, broadcastMessageApi } from './api';
+import { useApi } from './useApi';
+import {baseApi1Url} from "@/providers/SSEProvider/config";
 
 
 interface IProps { children: React.ReactNode }
@@ -15,6 +15,8 @@ interface IProps { children: React.ReactNode }
  * @param children
  */
 export const SSEEventProvider = ({children}: IProps) => {
+    const { apiUrl, refreshConnectedUsersApi, sendMessageApi, broadcastMessageApi } = useApi(baseApi1Url);
+
     const [state, setState] = useState<SSEEventState>({
         isConnected: false,
         pingList: [],
@@ -56,7 +58,7 @@ export const SSEEventProvider = ({children}: IProps) => {
             toast.error('建立新連線前，請先斷開連線');
             return;
         }
-        const es = new EventSource(`${api.sse}?userId=${userId}`);
+        const es = new EventSource(`${apiUrl.sse}?userId=${userId}`);
         setState(prev => ({
             ...prev,
             eventSource: es,
