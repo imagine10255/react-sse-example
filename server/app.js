@@ -3,6 +3,17 @@ import express from 'express'
 const app = express()
 const PORT = 8081
 
+// 格式化日期函數：顯示 月/日 時:分:秒
+function formatDateTime(date) {
+    const month = date.getMonth() + 1 // getMonth() 返回 0-11
+    const day = date.getDate()
+    const hours = date.getHours().toString().padStart(2, '0')
+    const minutes = date.getMinutes().toString().padStart(2, '0')
+    const seconds = date.getSeconds().toString().padStart(2, '0')
+    
+    return `${month}/${day} ${hours}:${minutes}:${seconds}`
+}
+
 // 儲存所有 SSE 連接，以用戶 ID 為 key
 const sseConnections = new Map()
 
@@ -59,7 +70,8 @@ app.post('/notifyUser', (req, res) => {
         userConnection.write(`data: ${JSON.stringify({
             type: eventType,
             message,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            formattedTime: formatDateTime(new Date())
         })}\n\n`)
 
         res.json({
@@ -95,7 +107,8 @@ app.post('/trigger', (req, res) => {
             clientRes.write(`data: ${JSON.stringify({
                 type: eventType,
                 message,
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                formattedTime: formatDateTime(new Date())
             })}\n\n`)
             successCount++
         } catch (error) {
@@ -175,7 +188,8 @@ app.get('/sse', async function (req, res) {
         type: 'connected',
         message: `用戶 ${userId} SSE 連接已建立`,
         userId,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        formattedTime: formatDateTime(new Date())
     })}\n\n`)
 
     // 定期發送 ping 訊息保持連接活躍
@@ -189,8 +203,9 @@ app.get('/sse', async function (req, res) {
             res.write(`event: ping\n`)
             res.write(`data: ${JSON.stringify({
                 type: 'ping',
-                message: `Ping from server - ${new Date().toISOString()}`,
-                timestamp: new Date().toISOString()
+                message: `Ping from server - ${formatDateTime(new Date())}`,
+                timestamp: new Date().toISOString(),
+                formattedTime: formatDateTime(new Date())
             })}\n\n`)
         } catch (error) {
             console.log(`發送 ping 給用戶 ${userId} 時發生錯誤:`, error.message)
