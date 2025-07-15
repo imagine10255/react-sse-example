@@ -35,6 +35,19 @@ export function sseHandler(req: Request, res: Response) {
         console.log(`用戶 ${userId} 已斷開連接`);
         shouldStop = true;
         sseConnections.delete(userId as string);
+
+        // 新增：通知所有人有新用戶連入
+        redisPub.publish(CHANNEL_ALL, JSON.stringify({
+            eventType: 'user-leave',
+            data: {
+                type: 'user-leave',
+                userId,
+                message: `用戶 ${userId} 已斷開連接`,
+                timestamp: new Date().toISOString(),
+                formattedTime: formatDateTime(new Date()),
+            },
+        }));
+
         res.end();
     });
     res.write(`event: connected\n`);
@@ -47,6 +60,19 @@ export function sseHandler(req: Request, res: Response) {
             formattedTime: formatDateTime(new Date()),
         })}\n\n`
     );
+
+
+    // 新增：通知所有人有新用戶連入
+    redisPub.publish(CHANNEL_ALL, JSON.stringify({
+        eventType: 'user-joined',
+        data: {
+            type: 'user-joined',
+            userId,
+            message: `用戶 ${userId} 已連線`,
+            timestamp: new Date().toISOString(),
+            formattedTime: formatDateTime(new Date()),
+        },
+    }));
 
 
 

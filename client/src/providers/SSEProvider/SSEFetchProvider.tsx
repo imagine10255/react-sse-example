@@ -161,6 +161,11 @@ export const SSEFetchProvider = ({children}: IProps) => {
                                         ...prev,
                                         notifications: [...prev.notifications, `${parsedData.message} (${parsedData.timestamp})`]
                                     }));
+                                } else if (data.includes('"type":"user-joined"')) {
+                                    refreshConnectedUsers();
+
+                                } else if (data.includes('"type":"user-leave"')) {
+                                    refreshConnectedUsers();
                                 }
                             }
                         }

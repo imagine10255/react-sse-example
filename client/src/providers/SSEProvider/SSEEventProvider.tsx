@@ -77,9 +77,11 @@ export const SSEEventProvider = ({children}: IProps) => {
             isConnected: true,
             pingList: ['已建立連線，準備傳輸數據...'],
         }));
+
         es.addEventListener('open', () => {
             refreshConnectedUsers();
         });
+
         es.addEventListener('error', (e) => {
             toast.error('連接失敗，請檢查伺服器狀態');
             setState(prev => ({
@@ -89,6 +91,7 @@ export const SSEEventProvider = ({children}: IProps) => {
             }));
             es.close();
         });
+
         es.addEventListener('connected', (e: MessageEvent) => {
             const data = JSON.parse(e.data);
             setState(prev => ({
@@ -96,12 +99,14 @@ export const SSEEventProvider = ({children}: IProps) => {
                 pingList: [...prev.pingList, `連線確認: ${data.message}`]
             }));
         });
+
         es.addEventListener('ping', (e: MessageEvent) => {
             setState(prev => ({
                 ...prev,
                 pingList: [...prev.pingList, e.data]
             }));
         });
+
         es.addEventListener('custom', (e: MessageEvent) => {
             const data = JSON.parse(e.data);
             setState(prev => ({
@@ -109,12 +114,21 @@ export const SSEEventProvider = ({children}: IProps) => {
                 customList: [...prev.customList, `${data.message} (${data.timestamp})`]
             }));
         });
+
         es.addEventListener('notification', (e: MessageEvent) => {
             const data = JSON.parse(e.data);
             setState(prev => ({
                 ...prev,
                 notifications: [...prev.notifications, `${data.message} (${data.timestamp})`]
             }));
+        });
+
+        es.addEventListener('user-joined', (e: MessageEvent) => {
+           refreshConnectedUsers();
+        });
+
+        es.addEventListener('user-leave', (e: MessageEvent) => {
+           refreshConnectedUsers();
         });
     }, [state.eventSource, refreshConnectedUsers]);
 
