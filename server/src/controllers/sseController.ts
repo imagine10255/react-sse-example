@@ -2,6 +2,83 @@ import { Request, Response } from 'express';
 import { formatDateTime } from '../utils';
 import {CHANNEL_ALL, CHANNEL_USER, redisPub, sseConnections} from '../redis';
 
+
+
+/**
+ * SSE連線
+ * @param req
+ * @param res
+ */
+export function sseHandler(req: Request, res: Response) {
+    const { userId } = req.query as { userId?: string };
+    const authHeader = req.headers.authorization;
+    let headerUserId: string | null = null;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        headerUserId = authHeader.substring(7);
+    }
+    const authUserId = userId || headerUserId;
+    if (!authUserId) {
+        console.log('身份驗證失敗:', { userId, headerUserId });
+        res.status(401).send('身份驗證失敗');
+        return;
+    }
+    console.log(`用戶 ${userId} 建立 SSE 連接`);
+    res.set({
+        'Cache-Control': 'no-cache',
+        'Content-Type': 'text/event-stream',
+        'Connection': 'keep-alive',
+    });
+    res.flushHeaders();
+    sseConnections.set(userId as string, res);
+    let shouldStop = false;
+    res.on('close', () => {
+        console.log(`用戶 ${userId} 已斷開連接`);
+        shouldStop = true;
+        sseConnections.delete(userId as string);
+        res.end();
+    });
+    res.write(`event: connected\n`);
+    res.write(
+        `data: ${JSON.stringify({
+            type: 'connected',
+            message: `用戶 ${userId} SSE 連接已建立`,
+            userId,
+            timestamp: new Date().toISOString(),
+            formattedTime: formatDateTime(new Date()),
+        })}\n\n`
+    );
+
+
+
+    const pingInterval = setInterval(() => {
+        if (shouldStop) {
+            clearInterval(pingInterval);
+            return;
+        }
+        try {
+            res.write(`event: ping\n`);
+            res.write(
+                `data: ${JSON.stringify({
+                    type: 'ping',
+                    message: `Ping from server - ${formatDateTime(new Date())}`,
+                    timestamp: new Date().toISOString(),
+                    formattedTime: formatDateTime(new Date()),
+                })}\n\n`
+            );
+        } catch (error: any) {
+            console.log(`發送 ping 給用戶 ${userId} 時發生錯誤:`, error.message);
+            clearInterval(pingInterval);
+            sseConnections.delete(userId as string);
+        }
+    }, 30000);
+    res.on('close', () => {
+        clearInterval(pingInterval);
+    });
+    return;
+}
+
+
+
 /**
  * 通知一位使用者
  * @param req
@@ -57,6 +134,9 @@ export function triggerAll(req: Request, res: Response) {
     });
 }
 
+
+
+
 /**
  * 取得目前所有使用者
  * @param req
@@ -71,73 +151,3 @@ export function getUsers(req: Request, res: Response) {
     });
 }
 
-
-/**
- * SSE連線
- * @param req
- * @param res
- */
-export function sseHandler(req: Request, res: Response) {
-    const { userId } = req.query as { userId?: string };
-    const authHeader = req.headers.authorization;
-    let headerUserId: string | null = null;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-        headerUserId = authHeader.substring(7);
-    }
-    const authUserId = userId || headerUserId;
-    if (!authUserId) {
-        console.log('身份驗證失敗:', { userId, headerUserId });
-        res.status(401).send('身份驗證失敗');
-        return;
-    }
-    console.log(`用戶 ${userId} 建立 SSE 連接`);
-    res.set({
-        'Cache-Control': 'no-cache',
-        'Content-Type': 'text/event-stream',
-        'Connection': 'keep-alive',
-    });
-    res.flushHeaders();
-    sseConnections.set(userId as string, res);
-    let shouldStop = false;
-    res.on('close', () => {
-        console.log(`用戶 ${userId} 已斷開連接`);
-        shouldStop = true;
-        sseConnections.delete(userId as string);
-        res.end();
-    });
-    res.write(`event: connected\n`);
-    res.write(
-        `data: ${JSON.stringify({
-            type: 'connected',
-            message: `用戶 ${userId} SSE 連接已建立`,
-            userId,
-            timestamp: new Date().toISOString(),
-            formattedTime: formatDateTime(new Date()),
-        })}\n\n`
-    );
-    const pingInterval = setInterval(() => {
-        if (shouldStop) {
-            clearInterval(pingInterval);
-            return;
-        }
-        try {
-            res.write(`event: ping\n`);
-            res.write(
-                `data: ${JSON.stringify({
-                    type: 'ping',
-                    message: `Ping from server - ${formatDateTime(new Date())}`,
-                    timestamp: new Date().toISOString(),
-                    formattedTime: formatDateTime(new Date()),
-                })}\n\n`
-            );
-        } catch (error: any) {
-            console.log(`發送 ping 給用戶 ${userId} 時發生錯誤:`, error.message);
-            clearInterval(pingInterval);
-            sseConnections.delete(userId as string);
-        }
-    }, 30000);
-    res.on('close', () => {
-        clearInterval(pingInterval);
-    });
-    return;
-}
