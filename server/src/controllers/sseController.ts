@@ -1,9 +1,12 @@
 import { Request, Response } from 'express';
 import { formatDateTime } from '../utils';
+import {CHANNEL_ALL, CHANNEL_USER, redisPub, sseConnections} from '../redis';
 
-// 儲存所有 SSE 連接，以用戶 ID 為 key
-const sseConnections = new Map<string, Response>();
-
+/**
+ * 通知一位使用者
+ * @param req
+ * @param res
+ */
 export function notifyUser(req: Request, res: Response) {
     const { userId, message, eventType = 'notification' } = req.body;
     if (!userId || !message) {
@@ -12,69 +15,53 @@ export function notifyUser(req: Request, res: Response) {
             message: '需要提供 userId 和 message',
         });
     }
-    const userConnection = sseConnections.get(userId);
-    if (!userConnection) {
-        return res.json({
-            success: false,
-            message: `用戶 ${userId} 未連接`,
-            data: { userId, message, eventType },
-        });
-    }
-    try {
-        userConnection.write(`event: ${eventType}\n`);
-        userConnection.write(
-            `data: ${JSON.stringify({
-                type: eventType,
-                message,
-                timestamp: new Date().toISOString(),
-                formattedTime: formatDateTime(new Date()),
-            })}\n\n`
-        );
-        return res.json({
-            success: true,
-            message: `已向用戶 ${userId} 發送通知`,
-            data: { userId, message, eventType },
-        });
-    } catch (error: any) {
-        console.log('發送 SSE 訊息時發生錯誤:', error.message);
-        sseConnections.delete(userId);
-        return res.json({
-            success: false,
-            message: `用戶 ${userId} 連接已斷開`,
-            data: { userId, message, eventType },
-        });
-    }
+    // 改為發送到 Redis channel
+    redisPub.publish(CHANNEL_USER, JSON.stringify({
+        userId,
+        eventType,
+        data: {
+            type: eventType,
+            message,
+            timestamp: new Date().toISOString(),
+            formattedTime: formatDateTime(new Date()),
+        },
+    }));
+    return res.json({
+        success: true,
+        message: `已向用戶 ${userId} 發送通知（經由 Redis）`,
+        data: { userId, message, eventType },
+    });
 }
 
+/**
+ * 廣播所有人
+ * @param req
+ * @param res
+ */
 export function triggerAll(req: Request, res: Response) {
     const { message = '預設訊息', eventType = 'notification' } = req.body;
-    let successCount = 0;
-    let failCount = 0;
-    sseConnections.forEach((clientRes, userId) => {
-        try {
-            clientRes.write(`event: ${eventType}\n`);
-            clientRes.write(
-                `data: ${JSON.stringify({
-                    type: eventType,
-                    message,
-                    timestamp: new Date().toISOString(),
-                    formattedTime: formatDateTime(new Date()),
-                })}\n\n`
-            );
-            successCount++;
-        } catch (error: any) {
-            console.log(`發送 SSE 訊息給用戶 ${userId} 時發生錯誤:`, error.message);
-            sseConnections.delete(userId);
-            failCount++;
-        }
-    });
+    // 改為發送到 Redis channel
+    redisPub.publish(CHANNEL_ALL, JSON.stringify({
+        eventType,
+        data: {
+            type: eventType,
+            message,
+            timestamp: new Date().toISOString(),
+            formattedTime: formatDateTime(new Date()),
+        },
+    }));
     res.json({
         success: true,
-        message: `已向 ${successCount} 個用戶發送通知，${failCount} 個連接失敗`,
-        data: { message, eventType, successCount, failCount },
+        message: `已廣播通知（經由 Redis）`,
+        data: { message, eventType },
     });
 }
 
+/**
+ * 取得目前所有使用者
+ * @param req
+ * @param res
+ */
 export function getUsers(req: Request, res: Response) {
     const users = Array.from(sseConnections.keys());
     res.json({
@@ -84,6 +71,12 @@ export function getUsers(req: Request, res: Response) {
     });
 }
 
+
+/**
+ * SSE連線
+ * @param req
+ * @param res
+ */
 export function sseHandler(req: Request, res: Response) {
     const { userId } = req.query as { userId?: string };
     const authHeader = req.headers.authorization;
@@ -147,4 +140,4 @@ export function sseHandler(req: Request, res: Response) {
         clearInterval(pingInterval);
     });
     return;
-} 
+}

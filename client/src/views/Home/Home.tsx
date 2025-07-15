@@ -1,6 +1,6 @@
 import {Col, Container, Flex, Row} from '@acrool/react-grid';
 import {toast} from '@acrool/react-toaster';
-import React from 'react';
+import React, {useEffect} from 'react';
 import {useParams} from 'react-router';
 import {Controller, SubmitHandler, useForm} from "react-hook-form";
 import clsx from 'clsx';
@@ -49,6 +49,13 @@ const Home = () => {
             selectedUserId: '',
         }
     });
+
+
+    useEffect(() => {
+        if(userId){
+            connect(userId);
+        }
+    }, [userId]);
 
     /**
      * 送出登入表單
