@@ -11,7 +11,7 @@
     "pages:deploy": "NODE_VERSION=20 yarn build && yarn wrangler pages deploy ./dist --project-name=acrool-react-fetcher-restful --branch main"
   },
   "resolutions": {
-    "styled-components": "6"
+    "styled-components": "6.1.17"
   },
   "dependencies": {
     "@acrool/js-logger": "^1.0.27",

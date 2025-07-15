@@ -1,7 +1,7 @@
 import {createBrowserRouter} from 'react-router';
 
 import Home from '@/views/Home';
-import {SSEFetchProvider} from "@/providers/SSEProvider";
+import {SSEFetchProvider} from "@/providers/SSEProvider/SSEFetchProvider";
 import {SSEEventProvider} from "@/providers/SSEProvider/SSEEventProvider";
 
 
