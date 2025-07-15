@@ -1,8 +1,8 @@
 import React, {useState, useCallback, useEffect} from 'react';
 import {toast} from '@acrool/react-toaster';
 import {SSEContext, SSEContextType, SSEFetchState} from './sseContext';
-import { baseApiUrl } from './config';
 import logger from "@acrool/js-logger";
+import {api} from "@/providers/SSEProvider/api";
 
 export interface SSEMessage {
     type: 'connected' | 'ping' | 'custom' | 'notification';
@@ -55,7 +55,7 @@ export const SSEFetchProvider = ({children}: IProps) => {
      */
     const refreshConnectedUsers = useCallback(async () => {
         try {
-            const response = await fetch(`${baseApiUrl}/users`);
+            const response = await fetch(api.users);
             const result = await response.json();
             console.log('連接用戶列表:', result);
             if (result.success) {
@@ -88,7 +88,7 @@ export const SSEFetchProvider = ({children}: IProps) => {
         setState(prev => ({...prev, abortController: controller, isConnected: true}));
 
         try {
-            const response = await fetch(`${baseApiUrl}/sse?userId=${userId}`, {
+            const response = await fetch(`${api.sse}?userId=${userId}`, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${userId}`,
@@ -211,7 +211,7 @@ export const SSEFetchProvider = ({children}: IProps) => {
      */
     const sendMessage = useCallback(async (userId: string, message: string, eventType: 'notification' | 'custom') => {
         try {
-            const response = await fetch(`${baseApiUrl}/notifyUser`, {
+            const response = await fetch(api.notifyUser, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -241,7 +241,7 @@ export const SSEFetchProvider = ({children}: IProps) => {
      */
     const broadcastMessage = useCallback(async (message: string) => {
         try {
-            const response = await fetch(`${baseApiUrl}/trigger`, {
+            const response = await fetch(api.trigger, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

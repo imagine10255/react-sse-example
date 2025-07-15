@@ -1,8 +1,8 @@
 import React, {useState, useCallback, useEffect} from 'react';
 import {toast} from '@acrool/react-toaster';
-import {baseApiUrl} from "@/providers/SSEProvider/config";
 import {SSEContext, SSEContextType, SSEEventState} from './sseContext';
 import logger from "@acrool/js-logger";
+import {api} from "@/providers/SSEProvider/api";
 
 export interface SSEMessage {
     type: 'connected' | 'ping' | 'custom' | 'notification';
@@ -47,7 +47,7 @@ export const SSEEventProvider = ({children}: IProps) => {
 
     const refreshConnectedUsers = useCallback(async () => {
         try {
-            const response = await fetch(`${baseApiUrl}/users`);
+            const response = await fetch(api.users);
             const result = await response.json();
             if (result.success) {
                 setState(prev => ({
@@ -70,7 +70,7 @@ export const SSEEventProvider = ({children}: IProps) => {
             toast.error('建立新連線前，請先斷開連線');
             return;
         }
-        const es = new EventSource(`${baseApiUrl}/sse?userId=${userId}`);
+        const es = new EventSource(`${api.sse}?userId=${userId}`);
         setState(prev => ({
             ...prev,
             eventSource: es,
@@ -139,11 +139,9 @@ export const SSEEventProvider = ({children}: IProps) => {
      */
     const sendMessage = useCallback(async (userId: string, message: string, eventType: 'notification' | 'custom') => {
         try {
-            const response = await fetch(`${baseApiUrl}/notifyUser`, {
+            const response = await fetch(api.notifyUser, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
                     userId,
                     message,
@@ -169,11 +167,9 @@ export const SSEEventProvider = ({children}: IProps) => {
      */
     const broadcastMessage = useCallback(async (message: string) => {
         try {
-            const response = await fetch(`${baseApiUrl}/trigger`, {
+            const response = await fetch(api.trigger, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
                     message,
                     eventType: 'notification'
