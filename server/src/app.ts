@@ -19,7 +19,7 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 
-app.use('/api', apiRouter);
+app.use('/api/sse', apiRouter);
 
 app.get('/', (req, res) => {
     res.send('Hello World!');

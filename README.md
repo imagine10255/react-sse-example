@@ -27,7 +27,8 @@ yarn install
 
 step1. run redis server
 ```bash
-docker-compose up
+cd server
+docker-compose up -d
 ```
 
 step2. run node server

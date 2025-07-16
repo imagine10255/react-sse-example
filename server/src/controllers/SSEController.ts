@@ -2,12 +2,24 @@ import { Request, Response } from 'express';
 import { formatDateTime } from '../utils';
 import {CHANNEL_ALL, CHANNEL_USER, redisPub, sseConnections, addOnlineUser, removeOnlineUser, getOnlineUsers} from '../redis';
 
+interface IRoute {
+    method: 'get'|'post',
+    func: (req: Request, res: Response) => Promise<unknown>
+}
+
+export const SSEController: Record<string, IRoute> = {
+    '/subscribe': {method: 'get', func: Subscribe},
+    '/users': {method: 'get', func: getUsers},
+    '/sendUser': {method: 'post', func: sendUser},
+    '/broadcastAll': {method: 'post', func: broadcastAll},
+}
+
 /**
  * SSE連線
  * @param req
  * @param res
  */
-export async function sseHandler(req: Request, res: Response) {
+async function Subscribe(req: Request, res: Response) {
     const { userId } = req.query as { userId?: string };
     const authHeader = req.headers.authorization;
     let headerUserId: string | null = null;
@@ -119,7 +131,7 @@ export async function sseHandler(req: Request, res: Response) {
  * @param req
  * @param res
  */
-export function notifyUser(req: Request, res: Response) {
+async function sendUser(req: Request, res: Response) {
     const { userId, message, eventType = 'notification' } = req.body;
     if (!userId || !message) {
         return res.status(400).json({
@@ -150,7 +162,7 @@ export function notifyUser(req: Request, res: Response) {
  * @param req
  * @param res
  */
-export function triggerAll(req: Request, res: Response) {
+async function broadcastAll(req: Request, res: Response) {
     const { message = '預設訊息', eventType = 'notification' } = req.body;
     // 發送到 Redis channel
     redisPub.publish(CHANNEL_ALL, JSON.stringify({
@@ -174,7 +186,7 @@ export function triggerAll(req: Request, res: Response) {
  * @param req
  * @param res
  */
-export async function getUsers(req: Request, res: Response) {
+async function getUsers(req: Request, res: Response) {
     const users = await getOnlineUsers();
     res.json({
         success: true,

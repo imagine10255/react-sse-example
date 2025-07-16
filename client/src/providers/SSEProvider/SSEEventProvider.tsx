@@ -5,7 +5,7 @@ import logger from "@acrool/js-logger";
 
 
 import { useApi } from './useApi';
-import {baseApi1Url} from "@/providers/SSEProvider/config";
+import {baseApi2Url} from "@/providers/SSEProvider/config";
 
 
 interface IProps { children: React.ReactNode }
@@ -15,7 +15,7 @@ interface IProps { children: React.ReactNode }
  * @param children
  */
 export const SSEEventProvider = ({children}: IProps) => {
-    const { apiUrl, refreshConnectedUsersApi, sendMessageApi, broadcastMessageApi } = useApi(baseApi1Url);
+    const { apiUrl, refreshConnectedUsersApi, sendMessageApi, broadcastMessageApi } = useApi(baseApi2Url);
 
     const [state, setState] = useState<SSEEventState>({
         isConnected: false,
@@ -58,7 +58,7 @@ export const SSEEventProvider = ({children}: IProps) => {
             toast.error('建立新連線前，請先斷開連線');
             return;
         }
-        const es = new EventSource(`${apiUrl.sse}?userId=${userId}`);
+        const es = new EventSource(`${apiUrl.subscribe}?userId=${userId}`);
         setState(prev => ({
             ...prev,
             eventSource: es,

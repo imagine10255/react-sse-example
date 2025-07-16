@@ -1,11 +1,15 @@
 import { Router } from 'express';
-import { notifyUser, triggerAll, getUsers, sseHandler } from '../controllers/sseController';
+import {SSEController} from '../controllers/SSEController';
+import {objectKeys} from "@acrool/js-utils/object";
 
 const router = Router();
 
-router.post('/notifyUser', notifyUser);
-router.post('/trigger', triggerAll);
-router.get('/users', getUsers);
-router.get('/sse', sseHandler);
 
-export default router; 
+objectKeys(SSEController).forEach(path => {
+    const config = SSEController[path];
+    if(config){
+        router[config.method](path, config.func);
+    }
+})
+
+export default router;

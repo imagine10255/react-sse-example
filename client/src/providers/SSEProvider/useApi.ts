@@ -11,10 +11,10 @@ export interface SetStateFunction {
 export const useApi = (baseApiUrl: string) => {
 
     const apiUrl = {
-        sse: `${baseApiUrl}/sse`,
-        notifyUser: `${baseApiUrl}/notifyUser`,
-        trigger: `${baseApiUrl}/trigger`,
-        users: `${baseApiUrl}/users`,
+        subscribe: `${baseApiUrl}/sse/subscribe`,
+        sendUser: `${baseApiUrl}/sse/sendUser`,
+        broadcastAll: `${baseApiUrl}/sse/broadcastAll`,
+        users: `${baseApiUrl}/sse/users`,
     }
 
 
@@ -41,7 +41,7 @@ export const useApi = (baseApiUrl: string) => {
      */
     async function sendMessageApi(userId: string, message: string, eventType: 'notification' | 'custom') {
         try {
-            const response = await fetch(apiUrl.notifyUser, {
+            const response = await fetch(apiUrl.sendUser, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -69,7 +69,7 @@ export const useApi = (baseApiUrl: string) => {
      */
     async function broadcastMessageApi(message: string) {
         try {
-            const response = await fetch(apiUrl.trigger, {
+            const response = await fetch(apiUrl.broadcastAll, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
