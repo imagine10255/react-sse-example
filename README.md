@@ -17,7 +17,12 @@ yarn install
 
 ## Usage
 
-step1. run node server
+step1. run redis server
+```bash
+docker-compose up
+```
+
+step2. run node server
 
 ```bash
 cd server
@@ -29,7 +34,7 @@ yarn dev
 PORT=8082 yarn dev
 ```
 
-step2. run client
+step3. run client
 
 ```bash
 cd client && yarn dev
