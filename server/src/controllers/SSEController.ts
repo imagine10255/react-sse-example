@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { formatDateTime } from '../utils';
-import {CHANNEL_ALL, CHANNEL_USER, redisPub, sseConnections, addOnlineUser, removeOnlineUser, getOnlineUsers} from '../redis';
+import {CHANNEL_ALL, CHANNEL_USER, redisPub, sseConnections, addOnlineUser, removeOnlineUser, getOnlineUsers, cleanupOfflineUsers, updateUserActivity as updateUserActivityRedis, updateUserHeartbeat, getUserDetailedStatus} from '../redis';
 
 interface IRoute {
     method: 'get'|'post',
@@ -10,6 +10,7 @@ interface IRoute {
 export const SSEController: Record<string, IRoute> = {
     '/subscribe': {method: 'get', func: Subscribe},
     '/users': {method: 'get', func: getUsers},
+    '/users/cleanup': {method: 'post', func: forceCleanup},
     '/sendUser': {method: 'post', func: sendUser},
     '/broadcastAll': {method: 'post', func: broadcastAll},
 }
@@ -38,6 +39,7 @@ async function Subscribe(req: Request, res: Response) {
     // 將用戶加入線上列表
     await addOnlineUser(authUserId);
 
+
     res.set({
         'Cache-Control': 'no-cache',
         'Content-Type': 'text/event-stream',
@@ -47,6 +49,8 @@ async function Subscribe(req: Request, res: Response) {
 
     // 儲存連接用於發送訊息
     sseConnections.set(authUserId, res);
+
+
 
     let shouldStop = false;
     res.on('close', async () => {
@@ -58,19 +62,6 @@ async function Subscribe(req: Request, res: Response) {
 
         // 從線上列表中移除用戶
         await removeOnlineUser(authUserId);
-
-        // 通知所有人有用戶離開
-        redisPub.publish(CHANNEL_ALL, JSON.stringify({
-            eventType: 'user-leave',
-            data: {
-                type: 'user-leave',
-                userId: authUserId,
-                message: `用戶 ${authUserId} 已斷開連接`,
-                timestamp: new Date().toISOString(),
-                formattedTime: formatDateTime(new Date()),
-            },
-        }));
-
         res.end();
     });
 
@@ -85,24 +76,19 @@ async function Subscribe(req: Request, res: Response) {
         })}\n\n`
     );
 
-    // 通知所有人有新用戶連入
-    redisPub.publish(CHANNEL_ALL, JSON.stringify({
-        eventType: 'user-joined',
-        data: {
-            type: 'user-joined',
-            userId: authUserId,
-            message: `用戶 ${authUserId} 已連線`,
-            timestamp: new Date().toISOString(),
-            formattedTime: formatDateTime(new Date()),
-        },
-    }));
 
-    const pingInterval = setInterval(() => {
+    const pingInterval = setInterval(async () => {
         if (shouldStop) {
             clearInterval(pingInterval);
             return;
         }
         try {
+            // 更新用戶心跳和活動狀態
+            await Promise.all([
+                updateUserHeartbeat(authUserId),
+                updateUserActivityRedis(authUserId)
+            ]);
+
             res.write(`event: ping\n`);
             res.write(
                 `data: ${JSON.stringify({
@@ -126,10 +112,11 @@ async function Subscribe(req: Request, res: Response) {
     return;
 }
 
+
+
+
 /**
- * 通知一位使用者
- * @param req
- * @param res
+ * 用戶發送訊息時同時更新活動狀態
  */
 async function sendUser(req: Request, res: Response) {
     const { userId, message, eventType = 'notification' } = req.body;
@@ -139,6 +126,13 @@ async function sendUser(req: Request, res: Response) {
             message: '需要提供 userId 和 message',
         });
     }
+
+    // 發送訊息的同時更新用戶活動狀態
+    await Promise.all([
+        updateUserActivityRedis(userId),
+        updateUserHeartbeat(userId)
+    ]);
+
     // 發送到 Redis channel
     redisPub.publish(CHANNEL_USER, JSON.stringify({
         userId,
@@ -150,6 +144,7 @@ async function sendUser(req: Request, res: Response) {
             formattedTime: formatDateTime(new Date()),
         },
     }));
+
     return res.json({
         success: true,
         message: `已向用戶 ${userId} 發送通知`,
@@ -157,10 +152,11 @@ async function sendUser(req: Request, res: Response) {
     });
 }
 
+
+
+
 /**
  * 廣播所有人
- * @param req
- * @param res
  */
 async function broadcastAll(req: Request, res: Response) {
     const { message = '預設訊息', eventType = 'notification' } = req.body;
@@ -181,10 +177,10 @@ async function broadcastAll(req: Request, res: Response) {
     });
 }
 
+
+
 /**
  * 取得目前所有使用者
- * @param req
- * @param res
  */
 async function getUsers(req: Request, res: Response) {
     const users = await getOnlineUsers();
@@ -192,6 +188,18 @@ async function getUsers(req: Request, res: Response) {
         success: true,
         message: `當前有 ${users.length} 個用戶連接`,
         data: { users, count: users.length },
+    });
+}
+
+
+/**
+ * 強制清理離線用戶
+ */
+async function forceCleanup(req: Request, res: Response) {
+    await cleanupOfflineUsers();
+    res.json({
+        success: true,
+        message: '已強制清理離線用戶',
     });
 }
 
