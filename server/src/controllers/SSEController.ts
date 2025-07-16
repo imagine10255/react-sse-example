@@ -1,6 +1,17 @@
 import { Request, Response } from 'express';
 import { formatDateTime } from '../utils';
-import {CHANNEL_ALL, CHANNEL_USER, redisPub, sseConnections, addOnlineUser, removeOnlineUser, getOnlineUsers, cleanupOfflineUsers, updateUserActivity as updateUserActivityRedis, updateUserHeartbeat, getUserDetailedStatus} from '../redis';
+import {
+    CHANNEL_ALL,
+    CHANNEL_USER,
+    redisPub,
+    sseConnections,
+    addOnlineUser,
+    removeOnlineUser,
+    getOnlineUsers,
+    // updateUserActivity as updateUserActivityRedis,
+    updateUserHeartbeat,
+    HEARTBEAT_INTERVAL
+} from '../redis';
 
 interface IRoute {
     method: 'get'|'post',
@@ -10,7 +21,6 @@ interface IRoute {
 export const SSEController: Record<string, IRoute> = {
     '/subscribe': {method: 'get', func: Subscribe},
     '/users': {method: 'get', func: getUsers},
-    '/users/cleanup': {method: 'post', func: forceCleanup},
     '/sendUser': {method: 'post', func: sendUser},
     '/broadcastAll': {method: 'post', func: broadcastAll},
 }
@@ -52,16 +62,16 @@ async function Subscribe(req: Request, res: Response) {
 
 
 
-    let shouldStop = false;
+
     res.on('close', async () => {
         console.log(`用戶 ${authUserId} 已斷開連接`);
-        shouldStop = true;
+        clearInterval(pingInterval);
+
+        await removeOnlineUser(authUserId);
 
         // 從連接 Map 中移除
         sseConnections.delete(authUserId);
-
         // 從線上列表中移除用戶
-        await removeOnlineUser(authUserId);
         res.end();
     });
 
@@ -78,15 +88,11 @@ async function Subscribe(req: Request, res: Response) {
 
 
     const pingInterval = setInterval(async () => {
-        if (shouldStop) {
-            clearInterval(pingInterval);
-            return;
-        }
         try {
             // 更新用戶心跳和活動狀態
             await Promise.all([
                 updateUserHeartbeat(authUserId),
-                updateUserActivityRedis(authUserId)
+                // updateUserActivityRedis(authUserId)
             ]);
 
             res.write(`event: ping\n`);
@@ -104,11 +110,9 @@ async function Subscribe(req: Request, res: Response) {
             sseConnections.delete(authUserId);
             removeOnlineUser(authUserId);
         }
-    }, 30000);
+    }, HEARTBEAT_INTERVAL);
 
-    res.on('close', () => {
-        clearInterval(pingInterval);
-    });
+
     return;
 }
 
@@ -128,10 +132,10 @@ async function sendUser(req: Request, res: Response) {
     }
 
     // 發送訊息的同時更新用戶活動狀態
-    await Promise.all([
-        updateUserActivityRedis(userId),
-        updateUserHeartbeat(userId)
-    ]);
+    // await Promise.all([
+        // updateUserActivityRedis(userId),
+        // updateUserHeartbeat(userId)
+    // ]);
 
     // 發送到 Redis channel
     redisPub.publish(CHANNEL_USER, JSON.stringify({
@@ -195,11 +199,11 @@ async function getUsers(req: Request, res: Response) {
 /**
  * 強制清理離線用戶
  */
-async function forceCleanup(req: Request, res: Response) {
-    await cleanupOfflineUsers();
-    res.json({
-        success: true,
-        message: '已強制清理離線用戶',
-    });
-}
+// async function forceCleanup(req: Request, res: Response) {
+//     await cleanupOfflineUsers();
+//     res.json({
+//         success: true,
+//         message: '已強制清理離線用戶',
+//     });
+// }
 
