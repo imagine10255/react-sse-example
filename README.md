@@ -8,6 +8,14 @@
 - use eventSource vs fetch
 - use docker run redis
 
+
+## Config
+
+Setting API Config
+
+> client/src/providers/SSEProvider/config.ts
+
+
 ## Install
 
 ```bash
