@@ -5,7 +5,7 @@ import {useParams} from 'react-router';
 import {Controller, SubmitHandler, useForm} from "react-hook-form";
 import clsx from 'clsx';
 import {isEmpty} from "@acrool/js-utils/equal";
-import { useSSEConnection, useSSEMessage, useSSEMessages } from '@/providers/SSEProvider';
+import {useSSEConnection, useSSEMessage, useSSEMessages} from '@/providers/SSEProvider';
 
 /**
  * Login
@@ -19,16 +19,16 @@ interface ILoginForm {
  */
 interface IMessageForm {
     message: string
-    eventType: 'notification'|'custom'
+    eventType: 'notification' | 'custom'
     selectedUserId: string
 }
 
 const Home = () => {
-    const {userId} = useParams<{userId: string}>();
+    const {userId} = useParams<{ userId: string }>();
 
     // 使用封裝的 SSE hooks
-    const { isConnecting, connect, disconnect, isConnected } = useSSEConnection();
-    const { isSending, sendMessage, broadcastMessage } = useSSEMessage();
+    const {isConnecting, connect, disconnect, isConnected} = useSSEConnection();
+    const {isSending, sendMessage, broadcastMessage} = useSSEMessage();
     const {
         pingMessages,
         customMessages,
@@ -38,11 +38,13 @@ const Home = () => {
     } = useSSEMessages();
 
     const LoginHookForm = useForm<ILoginForm>({
+        mode: 'onChange',
         defaultValues: {
             userId,
         }
     });
     const MessageHookForm = useForm<IMessageForm>({
+        mode: 'onChange',
         defaultValues: {
             eventType: 'notification',
             message: '',
@@ -52,7 +54,7 @@ const Home = () => {
 
 
     useEffect(() => {
-        if(userId){
+        if (userId) {
             connect(userId);
         }
     }, [userId]);
@@ -105,8 +107,8 @@ const Home = () => {
     /**
      * 渲染連線列表
      */
-    const renderConnectionList  = () => {
-        if(connectedUsers.length === 0){
+    const renderConnectionList = () => {
+        if (connectedUsers.length === 0) {
             return <p>No users</p>;
         }
 
@@ -147,7 +149,7 @@ const Home = () => {
      * 渲染 Ping 訊息
      */
     const renderPingMessage = () => {
-        if(pingMessages.length === 0){
+        if (pingMessages.length === 0) {
             return <div>No message</div>
         }
 
@@ -164,15 +166,15 @@ const Home = () => {
      * 渲染 通知 訊息
      */
     const renderNotificationsMessage = () => {
-        if(notificationMessages.length === 0){
+        if (notificationMessages.length === 0) {
             return <div>No message</div>
         }
 
         return <Flex column className="align-items-start">
             <ul>
-            {notificationMessages.map((item, index) => (
-                <li key={item + index} style={{ color: '#588e56' }}>{item}</li>
-            ))}
+                {notificationMessages.map((item, index) => (
+                    <li key={item + index} style={{color: '#588e56'}}>{item}</li>
+                ))}
             </ul>
         </Flex>
     }
@@ -181,15 +183,15 @@ const Home = () => {
      * 渲染 自定義 訊息
      */
     const renderCustomMessage = () => {
-        if(customMessages.length === 0){
+        if (customMessages.length === 0) {
             return <div>No message</div>
         }
 
         return <Flex column className="align-items-start">
             <ul>
-            {customMessages.map((item, index) => (
-                <li key={item + index} style={{ color: '#4485bb' }}>{item}</li>
-            ))}
+                {customMessages.map((item, index) => (
+                    <li key={item + index} style={{color: '#4485bb'}}>{item}</li>
+                ))}
             </ul>
         </Flex>
     }
@@ -209,12 +211,15 @@ const Home = () => {
                                         required: '請輸入帳號',
                                     }}
                                     render={({field, fieldState}) => {
-                                        return <input
-                                            {...field}
-                                            placeholder="帳號"
-                                            autoComplete="username"
-                                            disabled={isConnected}
-                                        />;
+                                        return <Flex>
+                                            <input
+                                                {...field}
+                                                placeholder="帳號"
+                                                autoComplete="username"
+                                                disabled={isConnected}
+                                            />
+                                            <span>{fieldState.error?.message}</span>
+                                        </Flex>;
                                     }}
                                 />
 
@@ -253,13 +258,20 @@ const Home = () => {
                                     defaultValue=""
                                     rules={{
                                         required: '請輸入訊息',
+                                        pattern: {
+                                            value: /^[\u4e00-\u9fa5a-zA-Z0-9\s]*$/,
+                                            message: '不能包含特殊符號',
+                                        },
                                     }}
                                     render={({field, fieldState}) => {
-                                        return <input
-                                            {...field}
-                                            placeholder="輸入通知訊息"
-                                            autoComplete="username"
-                                        />;
+                                        return <Flex column>
+                                            <input
+                                                {...field}
+                                                placeholder="輸入通知訊息"
+                                                autoComplete="username"
+                                            />
+                                            <span>{fieldState.error?.message}</span>
+                                        </Flex>;
                                     }}
                                 />
 
@@ -271,11 +283,14 @@ const Home = () => {
                                         required: '請選擇類型',
                                     }}
                                     render={({field, fieldState}) => {
-                                        return <select
-                                            {...field}>
-                                            <option value="notification">Notification</option>
-                                            <option value="custom">Custom</option>
-                                        </select>;
+                                        return <Flex column>
+                                            <select
+                                                {...field}>
+                                                <option value="notification">Notification</option>
+                                                <option value="custom">Custom</option>
+                                            </select>
+                                            <span>{fieldState.error?.message}</span>
+                                        </Flex>;
                                     }}
                                 />
 
