@@ -191,3 +191,14 @@ server/
 ## 授權
 
 MIT License 
+
+
+## Server 端支援 HTTPS
+
+```bash
+brew install mkcert
+mkcert -install
+
+## 加入 localhost 127.0.0.1 的憑證
+mkcert localhost 127.0.0.1 ::1
+```
