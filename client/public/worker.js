@@ -37,18 +37,16 @@ function decodeSSEMessage(sseValue) {
  * 處理流式數據
  * @returns {Promise<void>}
  */
-const processStream = async (port, reader) => {
+const processStream = async (reader) => {
     try {
         while (true) {
             const {done, value} = await reader.read();
-
-            if (done) {
-                console.log('Stream complete');
-                break;
-            }
-
+            if (done) break;
             const eventBuffer = decodeSSEMessage(value);
-            port.postMessage(eventBuffer.data);
+            // 廣播給所有 clients
+            for (const port of clients) {
+                port.postMessage(eventBuffer.data);
+            }
         }
     } catch (error) {
         if (error.name === 'AbortError') {
@@ -68,12 +66,7 @@ self.onerror = (event) => {
 };
 
 self.onconnect = async (e) => {
-
     const port = e.ports[0];
-    clients.push(port);
-    console.log('Client connected, total clients:', clients.length);
-
-
 
     // 重寫 console，讓子頁也可以看到
     ['log','info','warn','error'].forEach(level => {
@@ -89,44 +82,37 @@ self.onconnect = async (e) => {
     });
 
 
+    clients.push(port);
+    console.log('Client connected, total clients:', clients.length);
+
+
     // 發送連接確認訊息給 client
     port.postMessage({message: `hello ShareWorker [${SSEResponse ? 'Slave':'Master'}]`});
 
+    if(SSEResponse) return;
 
-        if(!SSEResponse){
-            // 第一次有 client 連進來時，才建立 SSE 連線
-            const sseUrl = 'https://localhost:9081/api/sse/subscribe';
+    // 第一次有 client 連進來時，才建立 SSE 連線
+    const sseUrl = 'https://localhost:9081/api/sse/subscribe';
 
-            console.log(`Creating SSE connection...${sseUrl}`);
+    console.log(`Creating SSE connection...${sseUrl}`);
 
-            const userId = 'shareUser'
-            const controller = new AbortController();
-            const tmpResponse = await fetch(`${sseUrl}?userId=${userId}`, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${userId}`,
-                    'Accept': 'text/event-stream',
-                    'Cache-Control': 'no-cache',
-                },
-                signal: controller.signal,
-            });
+    const userId = 'shareUser'
+    const controller = new AbortController();
+    SSEResponse = await fetch(`${sseUrl}?userId=${userId}`, {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${userId}`,
+            'Accept': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+        },
+        signal: controller.signal,
+    });
 
-            if (!tmpResponse.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
+    if (!SSEResponse.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    if (!SSEResponse.body) throw new Error('Response body is null');
 
-            if (!tmpResponse.body) {
-                throw new Error('Response body is null');
-            }
-
-            SSEResponse = tmpResponse;
-        }
-
-        const reader = SSEResponse.body.getReader();
-        processStream(port, reader);
-
-
-    // port.start();
+    const reader = SSEResponse.body.getReader();
+    processStream(reader);
 
 
 }
