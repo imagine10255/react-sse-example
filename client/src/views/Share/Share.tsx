@@ -1,7 +1,7 @@
 import {Col, Container, Flex, Row} from '@acrool/react-grid';
 import {toast} from '@acrool/react-toaster';
 import React, {useEffect, useState} from 'react';
-import {useParams} from 'react-router';
+import {useNavigate, useParams, useRoutes} from 'react-router';
 import logger from "@acrool/js-logger";
 import {isEmpty} from "@acrool/js-utils/equal";
 
@@ -32,7 +32,7 @@ const Client = () => {
     const {userId} = useParams<{ userId: string }>();
     const [messages, setMessages] = useState<string[]>([]);
     const [isConnected, setIsConnected] = useState(false);
-    const [clientCount, setClientCount] = useState(0);
+    const navigate = useNavigate();
 
     useEffect(() => {
         if (window.SharedWorker) {
@@ -42,6 +42,12 @@ const Client = () => {
                 console.log('SharedWorker created successfully');
 
                 worker.port.start();
+                window.addEventListener('beforeunload', () => {
+                    worker.port.postMessage('disconnect');
+
+                });
+
+
                 console.log('SharedWorker port started');
                 setIsConnected(true);
 
@@ -68,6 +74,7 @@ const Client = () => {
                     logger.danger('SharedWorker 訊息錯誤');
                 };
 
+
                 // 可選：componentWillUnmount 時關閉 port
                 return () => {
                     console.log('Disconnecting from SharedWorker...');
@@ -81,6 +88,7 @@ const Client = () => {
             logger.danger('不能使用 shareWorker');
             // 採用 fallback（如 BroadcastChannel 或 DedicatedWorker）
         }
+
     }, []);
 
     const handleReconnect = () => {
@@ -103,6 +111,9 @@ const Client = () => {
                             <p>已接收訊息數: {messages.length}</p>
                             <button onClick={handleReconnect} className="btn btn-primary">
                                 重新連接 SSE
+                            </button>
+                            <button onClick={() => navigate('/fetch/rebot')} className="btn btn-primary">
+                                跳轉
                             </button>
                         </Flex>
                     </Flex>

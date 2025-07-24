@@ -86,8 +86,20 @@ self.onconnect = async (e) => {
     console.log('Client connected, total clients:', clients.length);
 
 
+    port.onmessage = (event) => {
+        console.log('disconnect');
+
+        if (event.data === 'disconnect') {
+            // 從 clients 移除該 port
+            const idx = clients.indexOf(port);
+            if (idx !== -1) clients.splice(idx, 1);
+            console.log('Client disconnected, total clients:', clients.length);
+        }
+    };
+
+
     // 發送連接確認訊息給 client
-    port.postMessage({message: `hello ShareWorker [${SSEResponse ? 'Slave':'Master'}]`});
+    port.postMessage({message: `hello ShareWorker ${SSEResponse ? '':'[Init]'}`});
 
     if(SSEResponse) return;
 
