@@ -3,16 +3,15 @@ import {createBrowserRouter} from 'react-router';
 import Home from '@/views/Home';
 import {SSEFetchProvider} from "@/providers/SSEProvider/SSEFetchProvider";
 import {SSEEventProvider} from "@/providers/SSEProvider/SSEEventProvider";
-// import Share from './views/Share';
-import Client from "@/views/Share/Client";
+import Share from "@/views/Share";
 
 
-const withFetchProviders = (Component) => (props) => (
+const withFetchProviders = (Component: React.FC) => (props) => (
     <SSEFetchProvider>
         <Component {...props} />
     </SSEFetchProvider>
 );
-const withSSEProviders = (Component) => (props) => (
+const withSSEProviders = (Component: React.FC) => (props) => (
     <SSEEventProvider>
         <Component {...props} />
     </SSEEventProvider>
@@ -31,16 +30,10 @@ const routes = createBrowserRouter([
             {index: true, Component: withFetchProviders(Home)},
         ],
     },
-    // {
-    //     path: 'share',
-    //     children: [
-    //         {index: true, Component: Share},
-    //     ],
-    // },
     {
-        path: 'client',
+        path: 'share',
         children: [
-            {index: true, Component: Client},
+            {index: true, Component: Share},
         ],
     },
 ]);

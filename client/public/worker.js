@@ -1,14 +1,46 @@
-
 let response = null;
 const clients = [];
 
 console.log('SharedWorker started');
+
+
+
+/**
+ * 解析 decodeSSEMessage
+ * @param sseValue
+ */
+function decodeSSEMessage(sseValue) {
+    const chunk = new TextDecoder().decode(sseValue);
+    const lines = chunk.split('\n');
+
+    let eventBuffer = {};
+
+
+    for (const line of lines) {
+
+        if (line.startsWith('id: ')) {
+            const match = line.match(/^(\w+):\s?(.*)$/);
+            if (match) eventBuffer.id = match[2];
+        }
+        if (line.startsWith('event: ')) {
+            const match = line.match(/^(\w+):\s?(.*)$/);
+            if (match) eventBuffer.event = match[2];
+        }
+        if (line.startsWith('data: ')) {
+            const match = line.match(/^(\w+):\s?(.*)$/);
+            if (match) eventBuffer.data = JSON.parse(match[2]);
+        }
+    }
+    return eventBuffer;
+}
+
 
 // shared-worker.js
 self.onerror = (event) => {
     // 這裡 event.message, event.filename, event.lineno 都可以幫助你定位錯誤
     console.error('[SharedWorker error]', event.message, 'at', event.filename + ':' + event.lineno);
 };
+
 self.onconnect = async (e) => {
 
     const port = e.ports[0];
@@ -72,25 +104,8 @@ self.onconnect = async (e) => {
                             break;
                         }
 
-
-                        const chunk = new TextDecoder().decode(value);
-                        const lines = chunk.split('\n');
-
-                        for (const line of lines) {
-
-                            const match = line.match(/^(\w+):\s?(.*)$/);
-                            if (match) {
-                                const [, key, value] = match;
-                                if (key === 'data') {
-                                    console.log(value);
-                                    const decodeData = JSON.parse(value);
-                                    // 轉推給各個分頁
-                                    port.postMessage(decodeData);
-
-                                }
-                            }
-
-                        }
+                        const eventBuffer = decodeSSEMessage(value);
+                        port.postMessage(eventBuffer.data);
                     }
                 } catch (error) {
                     if (error.name === 'AbortError') {

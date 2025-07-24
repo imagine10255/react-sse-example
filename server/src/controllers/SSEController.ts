@@ -42,7 +42,7 @@ function sendFormatMessage(userConnection: Response , event: 'connected'|'ping'|
         `event: ${event}`,
         `data: ${JSON.stringify(messageContent)}`,
     ]
-    userConnection.write(`${sendData.join('\n')}\n`);
+    userConnection.write(`${sendData.join('\n')}\n\n`);
 }
 
 

@@ -4,11 +4,12 @@ import {SSEContext, SSEContextType, SSEFetchState} from './sseContext';
 import logger from "@acrool/js-logger";
 import { useApi } from './useApi';
 import {baseApi1Url} from "@/providers/SSEProvider/config";
-
+import { decodeSSEMessage } from './utils';
 
 
 
 interface IProps { children: React.ReactNode }
+
 
 /**
  * SSE Provider (Fetch)
@@ -111,49 +112,35 @@ export const SSEFetchProvider = ({children}: IProps) => {
                             toast.error(`Stream complete`);
                             break;
                         }
+                        const eventBuffer = decodeSSEMessage(value);
 
-                        const chunk = new TextDecoder().decode(value);
-                        const lines = chunk.split('\n');
+                        switch (eventBuffer.event) {
+                            case 'connected':
+                                setState(prev => ({
+                                    ...prev,
+                                    pingList: [...prev.pingList, `連線確認: ${eventBuffer.data?.message}`]
+                                }));
+                                break;
 
-                        for (const line of lines) {
-                            if (line.startsWith('event: ')) {
-                                const eventType = line.substring(7);
-                                continue;
-                            }
+                            case 'ping':
+                                setState(prev => ({
+                                    ...prev,
+                                    pingList: [...prev.pingList, `${eventBuffer.data?.message} (${eventBuffer.data?.createdAt})`]
+                                }));
+                                break;
 
-                            if (line.startsWith('data: ')) {
-                                const data = line.substring(6);
+                            case 'user-joined':
+                            case 'user-leave':
+                                refreshConnectedUsers();
+                                break;
 
-                                if (data.includes('"type":"connected"')) {
-                                    const parsedData = JSON.parse(data);
-                                    setState(prev => ({
-                                        ...prev,
-                                        pingList: [...prev.pingList, `連線確認: ${parsedData.message}`]
-                                    }));
-                                } else if (data.includes('"type":"ping"')) {
-                                    setState(prev => ({
-                                        ...prev,
-                                        pingList: [...prev.pingList, data]
-                                    }));
-                                } else if (data.includes('"type":"custom"')) {
-                                    const parsedData = JSON.parse(data);
-                                    setState(prev => ({
-                                        ...prev,
-                                        customList: [...prev.customList, `${parsedData.message} (${parsedData.timestamp})`]
-                                    }));
-                                } else if (data.includes('"type":"notification"')) {
-                                    const parsedData = JSON.parse(data);
-                                    setState(prev => ({
-                                        ...prev,
-                                        notifications: [...prev.notifications, `${parsedData.message} (${parsedData.timestamp})`]
-                                    }));
-                                } else if (data.includes('"type":"user-joined"')) {
-                                    refreshConnectedUsers();
-
-                                } else if (data.includes('"type":"user-leave"')) {
-                                    refreshConnectedUsers();
-                                }
-                            }
+                            case 'message':
+                                const messageType = eventBuffer.data?.type === 'custom'? 'customList': 'notifications';
+                                setState(prev => ({
+                                    ...prev,
+                                    [messageType]: [...prev[messageType], `${eventBuffer.data?.message} (${eventBuffer.data?.createdAt})`]
+                                }));
+                                break;
                         }
                     }
                 } catch (error: any) {
