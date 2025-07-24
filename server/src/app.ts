@@ -1,6 +1,7 @@
 import express from 'express';
 import apiRouter from './routes/api';
 import fs from 'fs';
+import https from 'https';
 
 const app = express();
 // 優先使用環境變數PORT，然後是命令列參數，最後是預設值8081
@@ -26,6 +27,18 @@ app.get('/', (req, res) => {
     res.send('Hello World!');
 });
 
-app.listen(PORT, () => {
-    console.log(`Listen Port:${PORT}`);
+// app.listen(PORT, () => {
+//     console.log(`Listen Port:${PORT}`);
+// });
+
+
+// Load the HTTPS certificate and key
+const options = {
+    key: fs.readFileSync('localhost+2-key.pem'),
+    cert: fs.readFileSync('localhost+2.pem'),
+};
+
+https.createServer(options, app).listen(9081, () => {
+    console.log(`Listen Port:9081`);
 });
+

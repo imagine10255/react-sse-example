@@ -21,6 +21,13 @@ interface IMessageForm {
     selectedUserId: string
 }
 
+const logLevel = {
+    log: logger.info,
+    info: logger.info,
+    warn: logger.warning,
+    error: logger.danger,
+}
+
 const Client = () => {
     const {userId} = useParams<{ userId: string }>();
     const [messages, setMessages] = useState<string[]>([]);
@@ -40,20 +47,27 @@ const Client = () => {
                 console.log('SharedWorker port started');
 
                 worker.port.onmessage = function (e) {
-                    console.log("Message received from worker.......!!!:", e.data);
 
-                    const msg = e.data;
-                    if (msg.__log) {
-                        console[msg.level].apply(console, ['[SharedWorker]'], ...msg.args);
-                    } else {
+                    const data = e.data;
+                    // if (msg.__log) {
+                    //     console[msg.level].apply(console, ['[SharedWorker]'], ...msg.args);
+                    // } else {
                         // 处理正常业务消息
-                    }
-                    if (e.data?.type === 'SSE_EVENT') {
-                        // 收到 SSE 廣播訊息
-                        const message = e.data.data;
-                        console.log('Received SSE message:', message);
-                        setMessages(prev => [...prev, message]);
-                        toast.success(`收到新訊息: ${message}`);
+                        // console.log("Message received from worker.......!!!:", e.type);
+                    // }
+                    if (e.type === 'message') {
+
+                        if(e.data.type === 'logger'){
+                            logLevel[data.level](`ShareWorker`, data.args);
+                            return;
+                        }else{
+                            // 收到 SSE 廣播訊息
+                            const message = e.data.message;
+                            setMessages(prev => [...prev, message]);
+                            toast.success(`收到新訊息: ${message}`);
+
+                        }
+
                     } else if (typeof e.data === 'string' && e.data === 'hello') {
                         // 連接確認訊息
                         console.log('Received hello message from worker');

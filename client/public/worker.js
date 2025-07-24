@@ -15,13 +15,13 @@ self.onconnect = async (e) => {
     clients.push(port);
     console.log('Client connected, total clients:', clients.length);
 
-    // 重写 console.log / error
+    // 重寫 console，讓子頁也可以看到
     ['log','info','warn','error'].forEach(level => {
         const orig = console[level];
         console[level] = (...args) => {
             orig(...args);           // 如果 DevTools 支持，也会在 Worker console 里显示
             port.postMessage({      // 再把信息发给主线程
-                __log: true,
+                type: 'logger',
                 level,
                 args
             });
@@ -30,15 +30,13 @@ self.onconnect = async (e) => {
 
 
     // 發送連接確認訊息給 client
-    port.postMessage('hello');
+    port.postMessage({message: 'hello'});
 
     // 第一次有 client 連進來時，才建立 SSE 連線
     if (!response) {
-        console.log('Creating SSE connection...');
-
-        // 使用相對路徑或完整的 URL
         const sseUrl = 'https://localhost:9081/api/sse/subscribe';
-        console.log('SSE URL:', sseUrl);
+
+        console.log(`Creating SSE connection...${sseUrl}`);
 
         const userId = 'shareUser'
         try {
@@ -62,13 +60,6 @@ self.onconnect = async (e) => {
             }
 
             const reader = response.body.getReader();
-            // setState(prev => ({
-            //     ...prev,
-            //     pingList: ['已建立連線，準備傳輸數據...'],
-            //     sseSource: reader
-            // }));
-
-            // await refreshConnectedUsers();
 
             // 處理流式數據
             const processStream = async () => {
@@ -78,26 +69,27 @@ self.onconnect = async (e) => {
 
                         if (done) {
                             console.log('Stream complete');
-
                             break;
                         }
+
 
                         const chunk = new TextDecoder().decode(value);
                         const lines = chunk.split('\n');
 
                         for (const line of lines) {
-                            if (line.startsWith('event: ')) {
-                                const eventType = line.substring(7);
-                                continue;
+
+                            const match = line.match(/^(\w+):\s?(.*)$/);
+                            if (match) {
+                                const [, key, value] = match;
+                                if (key === 'data') {
+                                    console.log(value);
+                                    const decodeData = JSON.parse(value);
+                                    // 轉推給各個分頁
+                                    port.postMessage(decodeData);
+
+                                }
                             }
 
-                            if (line.startsWith('data: ')) {
-                                const data = line.substring(6);
-                                const decodeData = JSON.parse(data.toString());
-
-                                // 轉推給各個分頁
-                                port.postMessage(decodeData);
-                            }
                         }
                     }
                 } catch (error) {

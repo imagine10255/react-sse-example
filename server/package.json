@@ -1,0 +1,28 @@
+{
+  "name": "server",
+  "author": "imagine10255<imagine10255@gmail.com>",
+  "scripts": {
+    "dev": "nodemon --watch './src/**/*.ts' --ext ts,js,mjs,cjs,json --exec 'ts-node ./src/app.ts'",
+    "start": "node dist/app.js",
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "clean": "rm -rf dist",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@acrool/js-utils": "^3.2.25",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "ulid": "^3.0.1"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.0.14",
+    "nodemon": "^3.1.10",
+    "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.8.3"
+  }
+}
