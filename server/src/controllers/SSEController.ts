@@ -42,6 +42,8 @@ function sendFormatMessage(userConnection: Response , event: 'connected'|'ping'|
         `event: ${event}`,
         `data: ${JSON.stringify(messageContent)}`,
     ]
+    console.log('發送訊息', sendData);
+
     userConnection.write(`${sendData.join('\n')}\n\n`);
 }
 

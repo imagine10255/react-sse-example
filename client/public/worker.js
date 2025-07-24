@@ -1,4 +1,4 @@
-let response = null;
+let SSEResponse = null;
 const clients = [];
 
 console.log('SharedWorker started');
@@ -14,8 +14,6 @@ function decodeSSEMessage(sseValue) {
     const lines = chunk.split('\n');
 
     let eventBuffer = {};
-
-
     for (const line of lines) {
 
         if (line.startsWith('id: ')) {
@@ -35,6 +33,34 @@ function decodeSSEMessage(sseValue) {
 }
 
 
+/**
+ * 處理流式數據
+ * @returns {Promise<void>}
+ */
+const processStream = async (port, reader) => {
+    try {
+        while (true) {
+            const {done, value} = await reader.read();
+
+            if (done) {
+                console.log('Stream complete');
+                break;
+            }
+
+            const eventBuffer = decodeSSEMessage(value);
+            port.postMessage(eventBuffer.data);
+        }
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            console.error('Stream aborted');
+
+        } else {
+            console.error(`Stream processing error: ${error.message}`);
+
+        }
+    }
+};
+
 // shared-worker.js
 self.onerror = (event) => {
     // 這裡 event.message, event.filename, event.lineno 都可以幫助你定位錯誤
@@ -47,12 +73,14 @@ self.onconnect = async (e) => {
     clients.push(port);
     console.log('Client connected, total clients:', clients.length);
 
+
+
     // 重寫 console，讓子頁也可以看到
     ['log','info','warn','error'].forEach(level => {
         const orig = console[level];
         console[level] = (...args) => {
-            orig(...args);           // 如果 DevTools 支持，也会在 Worker console 里显示
-            port.postMessage({      // 再把信息发给主线程
+            orig(...args);
+            port.postMessage({
                 type: 'logger',
                 level,
                 args
@@ -62,18 +90,18 @@ self.onconnect = async (e) => {
 
 
     // 發送連接確認訊息給 client
-    port.postMessage({message: 'hello'});
+    port.postMessage({message: `hello ShareWorker [${SSEResponse ? 'Slave':'Master'}]`});
 
-    // 第一次有 client 連進來時，才建立 SSE 連線
-    if (!response) {
-        const sseUrl = 'https://localhost:9081/api/sse/subscribe';
 
-        console.log(`Creating SSE connection...${sseUrl}`);
+        if(!SSEResponse){
+            // 第一次有 client 連進來時，才建立 SSE 連線
+            const sseUrl = 'https://localhost:9081/api/sse/subscribe';
 
-        const userId = 'shareUser'
-        try {
+            console.log(`Creating SSE connection...${sseUrl}`);
+
+            const userId = 'shareUser'
             const controller = new AbortController();
-            response = await fetch(`${sseUrl}?userId=${userId}`, {
+            const tmpResponse = await fetch(`${sseUrl}?userId=${userId}`, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${userId}`,
@@ -83,51 +111,25 @@ self.onconnect = async (e) => {
                 signal: controller.signal,
             });
 
-            if (!response.ok) {
+            if (!tmpResponse.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
-            if (!response.body) {
+            if (!tmpResponse.body) {
                 throw new Error('Response body is null');
             }
 
-            const reader = response.body.getReader();
-
-            // 處理流式數據
-            const processStream = async () => {
-                try {
-                    while (true) {
-                        const {done, value} = await reader.read();
-
-                        if (done) {
-                            console.log('Stream complete');
-                            break;
-                        }
-
-                        const eventBuffer = decodeSSEMessage(value);
-                        port.postMessage(eventBuffer.data);
-                    }
-                } catch (error) {
-                    if (error.name === 'AbortError') {
-                        console.log('Stream aborted');
-
-                    } else {
-                        console.log(`Stream processing error: ${error.message}`);
-
-                    }
-                }
-            };
-
-            processStream();
-        } catch (error) {
-            // toast.error(`連接失敗，請檢查伺服器狀態 ${(error).message}`);
-            // setState(prev => ({
-            //     ...prev,
-            //     isConnected: false,
-            //     abortController: null
-            // }));
+            SSEResponse = tmpResponse;
         }
-    }
+
+        const reader = SSEResponse.body.getReader();
+        processStream(port, reader);
+
+
+    // port.start();
+
+
+}
 
     // 處理 client 傳來的訊息（如手動重連）
     // port.onmessage = (msg) => {
@@ -163,5 +165,3 @@ self.onconnect = async (e) => {
     //     }
     // };
 
-    port.start();
-};

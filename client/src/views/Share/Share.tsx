@@ -36,8 +36,6 @@ const Client = () => {
 
     useEffect(() => {
         if (window.SharedWorker) {
-            logger.success('可以使用 shareWorker');
-
             console.log('Connecting to SharedWorker...');
             try {
                 const worker = new window.SharedWorker('/worker.js');
@@ -45,9 +43,9 @@ const Client = () => {
 
                 worker.port.start();
                 console.log('SharedWorker port started');
+                setIsConnected(true);
 
                 worker.port.onmessage = function (e) {
-                    setIsConnected(true);
 
                     const data = e.data;
 
