@@ -4,6 +4,10 @@ const clients = [];
 console.log('SharedWorker started');
 
 
+// 第一次有 client 連進來時，才建立 SSE 連線
+// const sseUrl = 'https://localhost:9081/api/sse/subscribe';
+const sseUrl = 'https://192.168.34.47:9081/api/sse/subscribe';
+
 
 /**
  * 解析 decodeSSEMessage
@@ -87,8 +91,6 @@ self.onconnect = async (e) => {
 
 
     port.onmessage = (event) => {
-        console.log('disconnect');
-
         if (event.data === 'disconnect') {
             // 從 clients 移除該 port
             const idx = clients.indexOf(port);
@@ -102,9 +104,6 @@ self.onconnect = async (e) => {
     port.postMessage({message: `hello ShareWorker ${SSEResponse ? '':'[Init]'}`});
 
     if(SSEResponse) return;
-
-    // 第一次有 client 連進來時，才建立 SSE 連線
-    const sseUrl = 'https://localhost:9081/api/sse/subscribe';
 
     console.log(`Creating SSE connection...${sseUrl}`);
 

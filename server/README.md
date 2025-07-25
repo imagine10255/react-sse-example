@@ -200,5 +200,5 @@ brew install mkcert
 mkcert -install
 
 ## 加入 localhost 127.0.0.1 的憑證
-mkcert localhost 127.0.0.1 ::1
+mkcert localhost 127.0.0.1 192.168.34.47 ::1
 ```

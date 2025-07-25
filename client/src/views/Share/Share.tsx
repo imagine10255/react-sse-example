@@ -49,9 +49,9 @@ const Client = () => {
 
 
                 console.log('SharedWorker port started');
-                setIsConnected(true);
 
                 worker.port.onmessage = function (e) {
+                    setIsConnected(true);
 
                     const data = e.data;
 

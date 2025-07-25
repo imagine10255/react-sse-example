@@ -5,7 +5,7 @@ import {defineConfig} from 'vite';
 import svgr from 'vite-plugin-svgr';
 import mkcert from'vite-plugin-mkcert';
 
-const enableSSL: any = true;
+const enableSSL: boolean = false;
 
 
 // https://vitejs.dev/config/

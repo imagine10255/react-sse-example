@@ -1,5 +1,6 @@
 import express from 'express';
 import apiRouter from './routes/api';
+import ngrok from 'ngrok';
 import fs from 'fs';
 import https from 'https';
 
@@ -33,12 +34,29 @@ app.get('/', (req, res) => {
 
 
 // Load the HTTPS certificate and key
-const options = {
-    key: fs.readFileSync('localhost+2-key.pem'),
-    cert: fs.readFileSync('localhost+2.pem'),
-};
+// const options = {
+//     key: fs.readFileSync('localhost+3-key.pem'),
+//     cert: fs.readFileSync('localhost+3.pem'),
+// };
+//
+// https.createServer(options, app).listen(9081, () => {
+//     console.log(`Listen Port:9081`);
+// });
 
-https.createServer(options, app).listen(9081, () => {
-    console.log(`Listen Port:9081`);
+
+app.listen(PORT, async () => {
+    console.log(`App listening on http://localhost:${PORT}`);
+
+    try {
+        const url = await ngrok.connect({
+            addr: PORT,
+            // authtoken: process.env.NGROK_AUTH_TOKEN, // 如果你设置了环境变量
+            authtoken: '30MJvyH2YP5QTwH54HEuxoPxTDS_7UndU9e7u8Sww5qx3qAfW', // 如果你设置了环境变量
+            // subdomain: 'sse',
+            // region: 'us', // 可选：指定隧道区域
+        });
+        console.log(`ngrok tunnel opened at ${url}`);
+    } catch (err) {
+        console.error('Error starting ngrok:', err);
+    }
 });
-
