@@ -51,7 +51,7 @@ app.listen(PORT, async () => {
         const url = await ngrok.connect({
             addr: PORT,
             // authtoken: process.env.NGROK_AUTH_TOKEN, // 如果你设置了环境变量
-            authtoken: '30MJvyH2YP5QTwH54HEuxoPxTDS_7UndU9e7u8Sww5qx3qAfW', // 如果你设置了环境变量
+            authtoken: '278tK5Mg3V3PLGQsx2ruAxu5XRC_565bwZHerepd6RJqzmMv3', // 如果你设置了环境变量
             // subdomain: 'sse',
             // region: 'us', // 可选：指定隧道区域
         });

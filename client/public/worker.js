@@ -6,7 +6,8 @@ console.log('SharedWorker started');
 
 // 第一次有 client 連進來時，才建立 SSE 連線
 // const sseUrl = 'https://localhost:9081/api/sse/subscribe';
-const sseUrl = 'https://192.168.34.47:9081/api/sse/subscribe';
+// const sseUrl = 'https://192.168.34.47:9081/api/sse/subscribe';
+const sseUrl = 'https://ce72b5a2e90e.ngrok-free.app/api/sse/subscribe';
 
 
 /**
@@ -107,7 +108,8 @@ self.onconnect = async (e) => {
 
     console.log(`Creating SSE connection...${sseUrl}`);
 
-    const userId = 'shareUser'
+    const now = new Date();
+    const userId = `Share${now.getHours().toString().padStart(2, '0')}${now.getMinutes().toString().padStart(2, '0')}${now.getSeconds().toString().padStart(2, '0')}`;
     const controller = new AbortController();
     SSEResponse = await fetch(`${sseUrl}?userId=${userId}`, {
         method: 'GET',
