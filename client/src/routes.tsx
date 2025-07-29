@@ -5,6 +5,7 @@ import {SSEFetchProvider} from "@/providers/SSEProvider/SSEFetchProvider";
 import {SSEEventProvider} from "@/providers/SSEProvider/SSEEventProvider";
 import {SSEFetchBroadcastChannelProvider} from "@/providers/SSEProvider/SSEFetchBroadcastChannelProvider";
 import Share from "@/views/Share";
+import Frame from "@/views/Frame";
 
 
 const withFetchProviders = (Component: React.FC) => (props) => (
@@ -46,6 +47,12 @@ const routes = createBrowserRouter([
         path: 'share',
         children: [
             {index: true, Component: Share},
+        ],
+    },
+    {
+        path: 'frame/:userId?',
+        children: [
+            {index: true, Component: Frame},
         ],
     },
 ]);
