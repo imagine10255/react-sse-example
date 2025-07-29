@@ -3,6 +3,7 @@ import {createBrowserRouter} from 'react-router';
 import Home from '@/views/Home';
 import {SSEFetchProvider} from "@/providers/SSEProvider/SSEFetchProvider";
 import {SSEEventProvider} from "@/providers/SSEProvider/SSEEventProvider";
+import {SSEFetchBroadcastChannelProvider} from "@/providers/SSEProvider/SSEFetchBroadcastChannelProvider";
 import Share from "@/views/Share";
 
 
@@ -16,6 +17,11 @@ const withSSEProviders = (Component: React.FC) => (props) => (
         <Component {...props} />
     </SSEEventProvider>
 );
+const withBroadcastChannelProviders = (Component: React.FC) => (props) => (
+    <SSEFetchBroadcastChannelProvider>
+        <Component {...props} />
+    </SSEFetchBroadcastChannelProvider>
+);
 
 const routes = createBrowserRouter([
     {
@@ -28,6 +34,12 @@ const routes = createBrowserRouter([
         path: 'fetch/:userId?',
         children: [
             {index: true, Component: withFetchProviders(Home)},
+        ],
+    },
+    {
+        path: 'broadcast/:userId?',
+        children: [
+            {index: true, Component: withBroadcastChannelProviders(Home)},
         ],
     },
     {

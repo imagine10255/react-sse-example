@@ -5,7 +5,7 @@ import {useParams} from 'react-router';
 import {Controller, SubmitHandler, useForm} from "react-hook-form";
 import clsx from 'clsx';
 import {isEmpty} from "@acrool/js-utils/equal";
-import {useSSEConnection, useSSEMessage, useSSEMessages} from '@/providers/SSEProvider';
+import {useSSE} from "@/providers/SSEProvider/hooks/useSSE";
 
 /**
  * Login
@@ -27,15 +27,32 @@ const Home = () => {
     const {userId} = useParams<{ userId: string }>();
 
     // 使用封裝的 SSE hooks
-    const {isConnecting, connect, disconnect, isConnected} = useSSEConnection();
-    const {isSending, sendMessage, broadcastMessage} = useSSEMessage();
     const {
-        pingMessages,
-        customMessages,
-        notificationMessages,
+        connect,
+        disconnect,
+        isConnected,
+        sendMessage,
+        refreshConnectedUsers,
+        isPrimaryConnection,
+        connectionId,
+        isLeader,
+        leaderId,
+        electionInProgress,
+
+        broadcastMessage,
         connectedUsers,
-        refreshConnectedUsers
-    } = useSSEMessages();
+
+        customList,
+        pingList,
+        notifications
+    } = useSSE();
+    // const {
+    //     pingMessages,
+    //     customMessages,
+    //     notificationMessages,
+    //     connectedUsers,
+    //     refreshConnectedUsers
+    // } = useSSEMessages();
 
     const LoginHookForm = useForm<ILoginForm>({
         mode: 'onChange',
@@ -54,9 +71,7 @@ const Home = () => {
 
 
     useEffect(() => {
-        if (userId) {
-            connect(userId);
-        }
+        connect(userId);
     }, [userId]);
 
     /**
@@ -149,13 +164,13 @@ const Home = () => {
      * 渲染 Ping 訊息
      */
     const renderPingMessage = () => {
-        if (pingMessages.length === 0) {
+        if (pingList.length === 0) {
             return <div>No message</div>
         }
 
         return <Flex column className="align-items-start text-left">
             <ul>
-                {pingMessages.map((item, index) => (
+                {pingList.map((item, index) => (
                     <li key={item + index}>{item}</li>
                 ))}
             </ul>
@@ -166,13 +181,13 @@ const Home = () => {
      * 渲染 通知 訊息
      */
     const renderNotificationsMessage = () => {
-        if (notificationMessages.length === 0) {
+        if (notifications.length === 0) {
             return <div>No message</div>
         }
 
         return <Flex column className="align-items-start">
             <ul>
-                {notificationMessages.map((item, index) => (
+                {notifications.map((item, index) => (
                     <li key={item + index} style={{color: '#588e56'}}>{item}</li>
                 ))}
             </ul>
@@ -183,13 +198,13 @@ const Home = () => {
      * 渲染 自定義 訊息
      */
     const renderCustomMessage = () => {
-        if (customMessages.length === 0) {
+        if (customList.length === 0) {
             return <div>No message</div>
         }
 
         return <Flex column className="align-items-start">
             <ul>
-                {customMessages.map((item, index) => (
+                {customList.map((item, index) => (
                     <li key={item + index} style={{color: '#4485bb'}}>{item}</li>
                 ))}
             </ul>
@@ -226,9 +241,9 @@ const Home = () => {
                                 <button
                                     type="submit"
                                     className={clsx({'d-none': isConnected})}
-                                    disabled={isConnecting}
+                                    disabled={isConnected}
                                 >
-                                    {isConnecting ? '連接中...' : '建立連線'}
+                                    {isConnected ? '連接中...' : '建立連線'}
                                 </button>
                                 <button
                                     type="button"
@@ -238,6 +253,32 @@ const Home = () => {
                                     斷開連線
                                 </button>
                             </form>
+
+                            {isConnected && (
+                                <Flex column className="gap-1">
+                                    <div style={{fontSize: '14px', color: isPrimaryConnection ? '#4CAF50' : '#FF9800'}}>
+                                        連線狀態: {isPrimaryConnection ? '主要連線' : '次要連線'}
+                                    </div>
+                                    <div style={{fontSize: '14px', color: isLeader ? '#4CAF50' : '#FF9800'}}>
+                                        Leader 狀態: {isLeader ? 'Leader' : 'Follower'}
+                                    </div>
+                                    {electionInProgress && (
+                                        <div style={{fontSize: '12px', color: '#FF5722'}}>
+                                            選舉進行中...
+                                        </div>
+                                    )}
+                                    {connectionId && (
+                                        <div style={{fontSize: '12px', color: '#666'}}>
+                                            連線 ID: {connectionId}
+                                        </div>
+                                    )}
+                                    {leaderId && leaderId !== connectionId && (
+                                        <div style={{fontSize: '12px', color: '#666'}}>
+                                            Leader ID: {leaderId}
+                                        </div>
+                                    )}
+                                </Flex>
+                            )}
                         </Flex>
 
                         <Flex column className="align-items-start mb-10">
@@ -294,12 +335,12 @@ const Home = () => {
                                     }}
                                 />
 
-                                <button type="submit" disabled={isSending}>
-                                    {isSending ? '發送中...' : '發送個別通知'}
+                                <button type="submit">
+                                    發送個別通知
                                 </button>
 
-                                <button type="button" onClick={triggerNotification} disabled={isSending}>
-                                    {isSending ? '發送中...' : '廣播通知'}
+                                <button type="button" onClick={triggerNotification}>
+                                    廣播通知
                                 </button>
                             </form>
                         </Flex>

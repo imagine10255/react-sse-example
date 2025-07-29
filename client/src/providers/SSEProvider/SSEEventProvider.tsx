@@ -24,6 +24,12 @@ export const SSEEventProvider = ({children}: IProps) => {
         notifications: [],
         connectedUsers: [],
         eventSource: null,
+
+        isPrimaryConnection: false,
+        connectionId: null,
+        isLeader: false,
+        leaderId: null,
+        electionInProgress: false,
     });
 
     useEffect(() => {

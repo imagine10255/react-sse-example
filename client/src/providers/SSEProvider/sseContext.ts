@@ -7,6 +7,11 @@ export interface BaseSSEState {
     customList: string[];
     notifications: string[];
     connectedUsers: string[];
+    isPrimaryConnection: boolean; // 是否為主要連線（第一個建立的連線）
+    connectionId: string | null; // 連線識別碼
+    isLeader: boolean; // 是否為 Leader
+    leaderId: string | null; // 當前 Leader ID
+    electionInProgress: boolean; // 選舉進行中
 }
 
 export interface SSEFetchState extends BaseSSEState{

@@ -1,10 +1,11 @@
-import React, {useState, useCallback, useEffect} from 'react';
+import React, {useState, useCallback, useEffect, useRef} from 'react';
 import {toast} from '@acrool/react-toaster';
 import {SSEContext, SSEContextType, SSEFetchState} from './sseContext';
 import logger from "@acrool/js-logger";
 import { useApi } from './useApi';
 import {baseApi1Url} from "@/providers/SSEProvider/config";
 import { decodeSSEMessage } from './utils';
+import { SSEBroadcastChannel } from './broadcastChannel';
 
 
 
@@ -12,11 +13,12 @@ interface IProps { children: React.ReactNode }
 
 
 /**
- * SSE Provider (Fetch)
+ * SSE Provider (Fetch with BroadcastChannel)
  * @param children
  */
-export const SSEFetchProvider = ({children}: IProps) => {
+export const SSEFetchBroadcastChannelProvider = ({children}: IProps) => {
     const { apiUrl, refreshConnectedUsersApi, sendMessageApi, broadcastMessageApi } = useApi(baseApi1Url);
+    const broadcastChannelRef = useRef<SSEBroadcastChannel>(new SSEBroadcastChannel());
 
     const [state, setState] = useState<SSEFetchState>({
         isConnected: false,
@@ -26,7 +28,6 @@ export const SSEFetchProvider = ({children}: IProps) => {
         connectedUsers: [],
         sseSource: null,
         abortController: null,
-
         isPrimaryConnection: false,
         connectionId: null,
         isLeader: false,
@@ -36,7 +37,49 @@ export const SSEFetchProvider = ({children}: IProps) => {
 
 
     useEffect(() => {
-        logger.success('Fetch Mode');
+        logger.success('Fetch Mode with BroadcastChannel');
+
+        // 初始化 BroadcastChannel
+
+        // 註冊訊息處理器
+        const channel = broadcastChannelRef.current;
+
+        // 處理從其他頁籤接收到的 SSE 訊息
+        channel.onMessage('connected', (message) => {
+            setState(prev => ({
+                ...prev,
+                pingList: [...prev.pingList, `連線確認: ${message.data?.message} (來自其他頁籤)`]
+            }));
+        });
+
+        channel.onMessage('ping', (message) => {
+            setState(prev => ({
+                ...prev,
+                pingList: [...prev.pingList, `${message.data?.message} (${message.data?.createdAt}) (來自其他頁籤)`]
+            }));
+        });
+
+        channel.onMessage('message', (message) => {
+            const messageType = message.data?.type === 'custom' ? 'customList' : 'notifications';
+            setState(prev => ({
+                ...prev,
+                [messageType]: [...prev[messageType], `${message.data?.message} (${message.data?.createdAt}) (來自其他頁籤)`]
+            }));
+        });
+
+        channel.onMessage('user-joined', () => {
+            refreshConnectedUsers();
+        });
+
+        channel.onMessage('user-leave', () => {
+            refreshConnectedUsers();
+        });
+
+        return () => {
+            if (broadcastChannelRef.current) {
+                broadcastChannelRef.current.close();
+            }
+        };
     }, []);
 
     useEffect(() => {
@@ -67,18 +110,58 @@ export const SSEFetchProvider = ({children}: IProps) => {
      * 連線
      */
     const connect = useCallback(async (userId: string) => {
+
         if (!userId) {
             toast.error('請先輸入UserId');
             return;
         }
-
-
 
         if (state.sseSource) {
             toast.error('建立新連線前，請先斷開連線');
             return;
         }
 
+
+        if (!broadcastChannelRef.current) {
+            toast.error('BroadcastChannel 未初始化');
+            return;
+        }
+        // 使用 Leader Election 機制
+        setState(prev => ({ ...prev, electionInProgress: true }));
+
+        let isLeader = false;
+        try {
+            console.log('xxx00');
+            isLeader = await broadcastChannelRef.current.createLeaderElection(userId);
+            console.log('xxx11');
+
+            setState(prev => ({
+                ...prev,
+                isLeader,
+                leaderId: isLeader ? broadcastChannelRef.current?.getConnectionId() || null : null,
+                electionInProgress: false,
+                isPrimaryConnection: isLeader,
+                connectionId: broadcastChannelRef.current?.getConnectionId() || null
+            }));
+        } catch (error) {
+            setState(prev => ({ ...prev, electionInProgress: false }));
+            toast.error('Leader Election 失敗');
+            return;
+        }
+        console.log('xxx22');
+
+        if (!isLeader) {
+            // 如果不是 Leader，只更新狀態，不建立實際的 SSE 連線
+            setState(prev => ({
+                ...prev,
+                isConnected: true,
+                pingList: ['已連線（非 Leader，接收其他頁籤的訊息）']
+            }));
+            toast.info('已連線（非 Leader，接收其他頁籤的訊息）');
+            return;
+        }
+
+        // 如果是主要連線，建立實際的 SSE 連線
         const controller = new AbortController();
         setState(prev => ({...prev, abortController: controller, isConnected: true}));
 
@@ -104,7 +187,7 @@ export const SSEFetchProvider = ({children}: IProps) => {
             const reader = response.body.getReader();
             setState(prev => ({
                 ...prev,
-                pingList: ['已建立連線，準備傳輸數據...'],
+                pingList: ['已建立主要連線，準備傳輸數據...'],
                 sseSource: reader
             }));
 
@@ -121,6 +204,11 @@ export const SSEFetchProvider = ({children}: IProps) => {
                             break;
                         }
                         const eventBuffer = decodeSSEMessage(value);
+
+                        // 廣播訊息到其他頁籤
+                        if (broadcastChannelRef.current && eventBuffer.event) {
+                            broadcastChannelRef.current.broadcastSSEMessage(eventBuffer.event, eventBuffer.data);
+                        }
 
                         switch (eventBuffer.event) {
                             case 'connected':
@@ -186,7 +274,11 @@ export const SSEFetchProvider = ({children}: IProps) => {
                 pingList: ['已關閉連線']
             }));
         } else {
-            toast.error('當前無連接');
+            setState(prev => ({
+                ...prev,
+                isConnected: false,
+                pingList: ['已關閉連線']
+            }));
         }
     }, [state.abortController]);
 

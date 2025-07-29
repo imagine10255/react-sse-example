@@ -127,40 +127,6 @@ self.onconnect = async (e) => {
     const reader = SSEResponse.body.getReader();
     processStream(reader);
 
-
 }
 
-    // 處理 client 傳來的訊息（如手動重連）
-    // port.onmessage = (msg) => {
-    //     console.log('Received message from client:', msg.data);
-    //     if (msg.data === 'RECONNECT') {
-    //         if (es) {
-    //             es.close();
-    //             es = null;
-    //         }
-    //         // 重新建立 SSE 連線
-    //         if (!es) {
-    //             console.log('Reconnecting SSE...');
-    //             const sseUrl = 'http://localhost:8081/api/sse/subscribe';
-    //             try {
-    //                 es = new EventSource(sseUrl);
-    //                 es.onmessage = (ev) => {
-    //                     for (const p of clients) {
-    //                         try {
-    //                             p.postMessage({ type: 'SSE_EVENT', data: ev.data, id: ev.lastEventId });
-    //                         } catch (error) {
-    //                             console.log('Error posting message to client:', error);
-    //                         }
-    //                     }
-    //                 };
-    //                 es.onerror = () => {
-    //                     es.close();
-    //                     es = null;
-    //                 };
-    //             } catch (error) {
-    //                 console.log('Error reconnecting SSE:', error);
-    //             }
-    //         }
-    //     }
-    // };
 
