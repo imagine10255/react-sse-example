@@ -47,16 +47,16 @@ app.get('/', (req, res) => {
 app.listen(PORT, async () => {
     console.log(`App listening on http://localhost:${PORT}`);
 
-    try {
-        const url = await ngrok.connect({
-            addr: PORT,
-            // authtoken: process.env.NGROK_AUTH_TOKEN, // 如果你设置了环境变量
-            authtoken: '278tK5Mg3V3PLGQsx2ruAxu5XRC_565bwZHerepd6RJqzmMv3', // 如果你设置了环境变量
-            // subdomain: 'sse',
-            // region: 'us', // 可选：指定隧道区域
-        });
-        console.log(`ngrok tunnel opened at ${url}`);
-    } catch (err) {
-        console.error('Error starting ngrok:', err);
-    }
+    // try {
+    //     const url = await ngrok.connect({
+    //         addr: PORT,
+    //         // authtoken: process.env.NGROK_AUTH_TOKEN, // 如果你设置了环境变量
+    //         authtoken: '278tK5Mg3V3PLGQsx2ruAxu5XRC_565bwZHerepd6RJqzmMv3', // 如果你设置了环境变量
+    //         // subdomain: 'sse',
+    //         // region: 'us', // 可选：指定隧道区域
+    //     });
+    //     console.log(`ngrok tunnel opened at ${url}`);
+    // } catch (err) {
+    //     console.error('Error starting ngrok:', err);
+    // }
 });
